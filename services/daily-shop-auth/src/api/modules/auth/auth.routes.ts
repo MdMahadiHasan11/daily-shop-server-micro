@@ -22,12 +22,6 @@ export class AuthRoutes extends BaseRoutes<AuthController> {
       this.controller.loginVerify,
     );
 
-    // forgot password
-    // this.router.post(
-    //   "/forgot-password",
-    //   this.validateRequest(AuthValidators.resetCredential),
-    //   this.controller.generateResetCredentials,
-    // );
     this.router.post("/logout", this.controller.logout);
     this.router.use(authenticate);
     this.router.get("/me", this.controller.getMe);

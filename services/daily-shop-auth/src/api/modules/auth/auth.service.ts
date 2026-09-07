@@ -1,4 +1,5 @@
 import { AuthProvider, User } from "@prisma/client";
+import axios from "axios";
 import { EVENTS } from "../../../bootstrap/event.constants";
 import { BaseService } from "../../../core/base/base.service";
 import { env } from "../../../core/config/env.config";
@@ -7,7 +8,6 @@ import { CACHE_KEYS } from "../../../core/redis/redis.constant";
 import sessionService from "../../../core/services/session.service";
 import { AuthRepository } from "./auth.repository";
 import AuthUtils from "./utils/auth.utils";
-
 export class AuthService extends BaseService {
   private repository: AuthRepository;
 
@@ -145,30 +145,60 @@ export class AuthService extends BaseService {
       if (!userId) {
         throw new AppError("Unauthorized user request", 401);
       }
+
       const cacheKey = CACHE_KEYS.userProfile(userId);
       const cachedUser = await this.cache.get(cacheKey);
-      // await this.cache.delete(CACHE_KEYS.userProfile(userId));
+
       if (cachedUser) {
         return typeof cachedUser === "string"
           ? JSON.parse(cachedUser)
           : cachedUser;
       }
 
-      const user = await this.repository.getUserByIdentity(userId);
-
-      if (!user) {
+      const authUser = await this.repository.getUserByIdentity(userId);
+      if (!authUser) {
         throw new AppError("User profile not found", 404);
       }
 
-      await this.cache.set(cacheKey, JSON.stringify(user), {
+      const userServiceUrl = "http://localhost:5011/v1";
+
+      const userProfileResponse = await axios.get(`${userServiceUrl}/user/me`, {
+        headers: {
+          "x-auth-user-id": authUser.id,
+          "x-auth-email": authUser.email || "",
+          "x-auth-phone": authUser.phoneNumber || "",
+          "x-internal-secret": "gateway",
+        },
+      });
+
+      const fullUserProfile =
+        userProfileResponse.data?.data || userProfileResponse.data;
+
+      await this.cache.set(cacheKey, JSON.stringify(fullUserProfile), {
         ttl: 900,
       });
 
-      return user;
+      return fullUserProfile;
     } catch (error) {
       if (error instanceof AppError) {
         throw error;
       }
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status || 500;
+        const errorData: any = error.response?.data;
+        const message =
+          errorData?.message ||
+          "Failed to fetch user profile from user service";
+
+        throw new AppError(
+          message,
+          status,
+          true,
+          errorData?.stack,
+          errorData?.code,
+        );
+      }
+
       this._handleError(error, "getMe", { userId });
       throw error;
     }
