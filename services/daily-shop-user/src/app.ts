@@ -43,7 +43,7 @@ app.get("/health", async (_req, res) => {
   });
 });
 
-app.use("/api/v1", router);
+app.use("/v1/user", router);
 
 app.get("/session", async (req, res) => {
   try {

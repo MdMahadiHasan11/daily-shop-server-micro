@@ -1,4 +1,3 @@
-import { UserRole } from "@prisma/client";
 import { Request } from "express";
 import { IUser } from "../../types/global";
 
@@ -7,7 +6,7 @@ export interface IMetaData {
   email: string | null;
   phoneNumber: string | null;
   jti: string | null;
-  role: UserRole;
+  // role: UserRole;
 
   ipAddress: string;
   userAgent: string;
@@ -24,7 +23,7 @@ export function getRequestMetadata(req: Request): IMetaData {
     email: user?.email,
     phoneNumber: user?.phoneNumber,
     jti: user?.jti,
-    role: user?.role,
+    // role: user?.role,
 
     ipAddress: req.ip || (req.socket?.remoteAddress as string),
     userAgent: req.headers["user-agent"] as string,

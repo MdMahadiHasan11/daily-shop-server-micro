@@ -1,92 +1,51 @@
-enum UserRole {
-    CUSTOMER
-    ADMIN
-    VENDOR
-    MODERATOR
+enum Gender {
+    MALE
+    FEMALE
+    OTHER
+    NOT_SPECIFIED
 }
 
-model User {
-    id                  String   @id @default(uuid())
-    role                UserRole @default(CUSTOMER)
-    phoneNumber         String?  @unique
-    phoneNumberVerified Boolean  @default(false)
+model UserProfileMaster {
+    id          String  @id
+    image       String?
+    email       String? @unique
+    phoneNumber String? @unique
 
-    email           String?   @unique
-    emailVerified   Boolean   @default(false)
-    emailVerifiedAt DateTime?
-
-    password String?
-    image    String?
- 
     profile   Profile?
-    accounts  Account[]
-    // sessions  Session[]
     addresses Address[]
 
     isDeleted Boolean  @default(false)
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
-    @@map("users")
+    @@map("user_profiles")
 }
 
 model Profile {
-    id     String @id @default(uuid())
-    userId String @unique
-    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    id     String            @id @default(uuid())
+    userId String            @unique
+    user   UserProfileMaster @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    firstName String?
-    lastName  String?
-    genderId  Int?    @default(0) // 0: Not Specified, 1: Male, 2: Female
+    firstName   String?
+    lastName    String?
+    gender      Gender    @default(NOT_SPECIFIED)
+    dateOfBirth DateTime?
+    bio         String?   @db.Text
 
     hasReturnRequests Boolean @default(false)
-    reloadLocation    Boolean @default(false)
     loyaltyVerified   Boolean @default(false)
-
-    dateOfBirth DateTime?
-    bio         String?
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
+    @@index([userId])
     @@map("profiles")
 }
 
-model Account {
-    id                String  @id @default(uuid())
-    userId            String
-    type              String
-    provider          String //  "google"
-    providerAccountId String // Google-unique id
-    refresh_token     String? @db.Text
-    access_token      String? @db.Text
-    expires_at        Int?
-    token_type        String?
-    scope             String?
-    id_token          String? @db.Text
-    session_state     String?
-
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    @@unique([provider, providerAccountId])
-    @@map("accounts")
-}
-
-// model Session {
-//     id           String   @id @default(uuid())
-//     sessionToken String   @unique
-//     userId       String
-//     expires      DateTime
-
-//     user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-//     @@map("sessions")
-// }
-
 model Address {
-    id     String @id @default(uuid())
+    id     String            @id @default(uuid())
     userId String
-    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    user   UserProfileMaster @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     fullName    String
     phoneNumber String
@@ -94,10 +53,12 @@ model Address {
     city        String
     area        String?
     postalCode  String?
+    country     String  @default("Bangladesh")
     isDefault   Boolean @default(false)
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
+    @@index([userId])
     @@map("addresses")
 }

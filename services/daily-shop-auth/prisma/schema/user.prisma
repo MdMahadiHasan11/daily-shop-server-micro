@@ -3,101 +3,103 @@ enum UserRole {
     ADMIN
     VENDOR
     MODERATOR
+    SUPPORT_AGENT
+    DELIVERY_PARTNER
+}
+
+enum AuthProvider {
+    LOCAL
+    GOOGLE
+    FACEBOOK
+    APPLE
+    PHONE
+    EMAIL
 }
 
 model User {
-    id                  String   @id @default(uuid())
-    role                UserRole @default(CUSTOMER)
-    phoneNumber         String?  @unique
-    phoneNumberVerified Boolean  @default(false)
+    id   String   @id @default(uuid())
+    role UserRole @default(CUSTOMER)
+
+    // Contact & Verification
+    phoneNumber           String?   @unique
+    phoneNumberVerified   Boolean   @default(false)
+    phoneNumberVerifiedAt DateTime?
 
     email           String?   @unique
     emailVerified   Boolean   @default(false)
     emailVerifiedAt DateTime?
 
+    // Credentials
     password String?
-    image    String?
- 
-    profile   Profile?
+
+    // Security & Enterprise Flags
+    isTwoFactorEnabled  Boolean   @default(false)
+    twoFactorSecret     String?
+    isLocked            Boolean   @default(false)
+    lockUntil           DateTime?
+    failedLoginAttempts Int       @default(0)
+
+    // Relations
     accounts  Account[]
-    // sessions  Session[]
-    addresses Address[]
+    sessions  Session[]
+    auditLogs AuthAuditLog[]
 
     isDeleted Boolean  @default(false)
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
+    @@index([email])
+    @@index([phoneNumber])
     @@map("users")
 }
 
-model Profile {
-    id     String @id @default(uuid())
-    userId String @unique
-    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    firstName String?
-    lastName  String?
-    genderId  Int?    @default(0) // 0: Not Specified, 1: Male, 2: Female
-
-    hasReturnRequests Boolean @default(false)
-    reloadLocation    Boolean @default(false)
-    loyaltyVerified   Boolean @default(false)
-
-    dateOfBirth DateTime?
-    bio         String?
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    @@map("profiles")
-}
-
 model Account {
-    id                String  @id @default(uuid())
+    id                String       @id @default(uuid())
     userId            String
-    type              String
-    provider          String //  "google"
-    providerAccountId String // Google-unique id
-    refresh_token     String? @db.Text
-    access_token      String? @db.Text
+    provider          AuthProvider
+    providerAccountId String
+    refresh_token     String?      @db.Text
+    access_token      String?      @db.Text
     expires_at        Int?
     token_type        String?
     scope             String?
-    id_token          String? @db.Text
-    session_state     String?
+    id_token          String?      @db.Text
 
     user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     @@unique([provider, providerAccountId])
+    @@index([userId])
     @@map("accounts")
 }
 
-// model Session {
-//     id           String   @id @default(uuid())
-//     sessionToken String   @unique
-//     userId       String
-//     expires      DateTime
+model Session {
+    id           String   @id @default(uuid())
+    sessionToken String   @unique
+    userId       String
+    userAgent    String?  @db.Text
+    ipAddress    String?
+    isRevoked    Boolean  @default(false)
+    expiresAt    DateTime
 
-//     user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-//     @@map("sessions")
-// }
+    @@index([userId])
+    @@index([sessionToken])
+    @@map("sessions")
+}
 
-model Address {
-    id     String @id @default(uuid())
-    userId String
-    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    fullName    String
-    phoneNumber String
-    addressLine String
-    city        String
-    area        String?
-    postalCode  String?
-    isDefault   Boolean @default(false)
-
+model AuthAuditLog {
+    id        String   @id @default(uuid())
+    userId    String?
+    action    String // যেমন: "LOGIN_SUCCESS", "PASSWORD_CHANGE", "LOGIN_FAILED", "LOGOUT"
+    ipAddress String?
+    userAgent String?  @db.Text
+    status    String // "SUCCESS" অথবা "FAILED"
     createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
 
-    @@map("addresses")
+    user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+    @@index([userId])
+    @@index([createdAt])
+    @@map("auth_audit_logs")
 }

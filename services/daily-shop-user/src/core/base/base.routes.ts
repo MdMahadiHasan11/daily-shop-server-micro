@@ -1,20 +1,11 @@
-// import { PermissionAction, UserTypeEnum } from "@prisma/client";
 import { Router } from "express";
-import { authenticate } from "../../api/middlewares/authentication.middleware";
 import { validate } from "../../api/middlewares/validation.middleware";
 import { BaseController } from "./base.controller";
-// import { authorize } from "../../api/middlewares/authorization.middleware";
-// import { validate } from "../../api/middlewares/validation.middleware";
-// import { ModuleKey } from "../../common/constants/moduleKey.constant";
 
 export abstract class BaseRoutes<T extends BaseController> {
   protected router: Router;
   protected controller: T;
-  protected authenticate = authenticate;
-  // protected authorize = authorize;
-  // protected moduleKey = ModuleKey;
-  // protected action = PermissionAction;
-  // protected userType = UserTypeEnum;
+
   protected validateRequest = validate;
   protected abstract registerRoutes(): void;
 

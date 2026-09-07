@@ -3,15 +3,15 @@ import db from "../lib/prisma";
 import { logger } from "../utils/logger.utils";
 
 async function runSeeds() {
-  await db.prisma.user.upsert({
-    where: { email: "admin@gmail.com" },
-    update: {},
-    create: {
-      id: "1",
-      email: "admin@gmail.com",
-      name: "Super Admin",
-    },
-  });
+  // await db.prisma.user.upsert({
+  //   where: { email: "admin@gmail.com" },
+  //   update: {},
+  //   create: {
+  //     id: "1",
+  //     email: "admin@gmail.com",
+  //     name: "Super Admin",
+  //   },
+  // });
 
   logger.info("🌱 Database records inserted successfully");
 }
