@@ -1,0 +1,26 @@
+services:
+  redis:
+    image: redis/redis-stack:latest
+    container_name: redis_local
+    restart: always
+    ports:
+      - "6379:6379" # Redis server
+      - "8008:8001" # RedisInsight UI
+    volumes:
+      - redis_data:/data
+    environment:
+      - REDIS_ARGS=--save 900 1
+
+  rabbitmq:
+    image: rabbitmq:3.8-management
+    container_name: rabbitmq_local
+    restart: always
+    ports:
+      - "5672:5672" # AMQP protocol port
+      - "15672:15672" # RabbitMQ Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+volumes:
+  redis_data:
+  rabbitmq_data:
