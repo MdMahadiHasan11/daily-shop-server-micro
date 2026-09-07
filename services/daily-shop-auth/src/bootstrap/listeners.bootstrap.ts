@@ -2,7 +2,7 @@ import { CartExpirationListener } from "../api/modules/cart/cart.listener";
 import { eventBus } from "../core/services/event-bus-rabit.service";
 import { redisSubscriberService } from "../core/services/redis-subscriber.service";
 import { logger } from "../core/utils/logger.utils";
-import { EVENTS, EventType } from "./event.constants";
+import { EVENTS } from "./event.constants";
 
 interface LoginInitiate {
   name?: string;
@@ -14,6 +14,8 @@ interface LoginInitiate {
 
 export async function bootstrapListeners(): Promise<void> {
   CartExpirationListener.register();
+
+  // here redis expired service
   // 2. Register OTP Expiration Event Handler
   redisSubscriberService.onKeyExpired("otp", (fullKey, keyParts) => {
     // Expected key format: otp:<identifier>
@@ -30,18 +32,7 @@ export async function bootstrapListeners(): Promise<void> {
 
   await redisSubscriberService.start();
 
-  // 2. ✅ RabbitMQ EventBus Subscriptions (Example Setup)
-
-  await eventBus.subscribe(
-    EVENTS.LOGIN_INITIATE,
-    async (event: EventType<LoginInitiate>) => {
-      const { name, phone, email, otp, expiryMinutes } = event.payload;
-      const identifier = phone ? phone : email;
-      logger.info({ otp: event.payload }, `OTP send`);
-    },
-    "auth_service_group",
-  );
-
+  // here event bus
   await eventBus.subscribe(
     EVENTS.FORGOT_PASSWORD,
     async (event) => {

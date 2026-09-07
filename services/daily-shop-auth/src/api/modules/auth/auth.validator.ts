@@ -49,13 +49,7 @@ export class AuthValidators extends BaseValidator {
         path: ["phone"],
       }),
   });
-  static resetCredential = z.object({
-    body: z.object({
-      email: z.email(),
-    }),
-  });
 }
 
 // @Types
 export type LoginDto = z.infer<typeof AuthValidators.login>;
-export type resetCredentialDto = z.infer<typeof AuthValidators.resetCredential>;

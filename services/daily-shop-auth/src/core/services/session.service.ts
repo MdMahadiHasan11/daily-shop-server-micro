@@ -21,6 +21,7 @@ class SessionService {
         email,
         phoneNumber,
       });
+    const expired = env.SESSION_TTL_SECONDS;
 
     await this.cache.set(
       `session:${jti}`,
@@ -33,10 +34,10 @@ class SessionService {
         ipAddress: ipAddress || "unknown",
         valid: true,
       }),
-      { ttl: env.SESSION_TTL_SECONDS },
+      { ttl: expired },
     );
 
-    return { accessToken, refreshToken, jti };
+    return { accessToken, refreshToken, jti, expired };
   }
 
   async revokeSession(jti: string, ttl?: number) {

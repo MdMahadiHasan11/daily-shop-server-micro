@@ -13,16 +13,16 @@ export class UserController extends BaseController {
     this.service = new UserService();
   }
 
-  createUser = this.asyncHandler(async (req: Request, res: Response) => {
-    const metaData = this.getReqMetadata(req) as IMetaData;
-    const result = await this.service.createUsers(metaData);
+  // createUser = this.asyncHandler(async (req: Request, res: Response) => {
+  //   const metaData = this.getReqMetadata(req) as IMetaData;
+  //   const result = await this.service.createUsers(metaData);
 
-    return this.successResponse(
-      res,
-      { user: result, message: "User create done" },
-      200,
-    );
-  });
+  //   return this.successResponse(
+  //     res,
+  //     { user: result, message: "User create done" },
+  //     200,
+  //   );
+  // });
 
   getAllUser = this.asyncHandler(async (req: Request, res: Response) => {
     const metaData = this.getReqMetadata(req) as IMetaData;

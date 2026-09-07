@@ -1,12 +1,12 @@
+import { AuthProvider, Session, User } from "@prisma/client";
 import { BaseRepository } from "../../../core/base/base.repository";
-import { UserWithProfile } from "./auth.type";
 
 export class AuthRepository extends BaseRepository<"user"> {
   constructor() {
     super("user");
   }
 
-  async getUserByIdentity(identifier: string): Promise<UserWithProfile | null> {
+  async getUserByIdentity(identifier: string): Promise<User | null> {
     return await this.prisma.user.findFirst({
       where: {
         isDeleted: false,
@@ -16,84 +16,59 @@ export class AuthRepository extends BaseRepository<"user"> {
           { id: identifier },
         ],
       },
-      select: {
-        id: true,
-        role: true,
-        phoneNumber: true,
-        phoneNumberVerified: true,
-        email: true,
-        emailVerified: true,
-        emailVerifiedAt: true,
-        image: true,
-        isDeleted: true,
-        createdAt: true,
-        updatedAt: true,
-        profile: {
-          select: {
-            id: true,
-            userId: true,
-            firstName: true,
-            lastName: true,
-            genderId: true,
-            hasReturnRequests: true,
-            reloadLocation: true,
-            loyaltyVerified: true,
-            dateOfBirth: true,
-            bio: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-        },
-      },
     });
   }
 
-  async createUserWithProfile(data: {
+  async createUserWithProfileAndAccount(data: {
     phoneNumber?: string | null;
     email?: string | null;
     phoneNumberVerified?: boolean;
     emailVerified?: boolean;
-  }): Promise<UserWithProfile> {
-    return await this.prisma.user.create({
+    provider?: AuthProvider;
+    providerAccountId?: string;
+  }): Promise<User> {
+    const provider =
+      data.provider ||
+      (data.phoneNumber ? AuthProvider.PHONE : AuthProvider.LOCAL);
+    const providerAccountId =
+      data.providerAccountId || data.phoneNumber || data.email || "";
+
+    return await this.prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          phoneNumber: data.phoneNumber,
+          email: data.email,
+          phoneNumberVerified: data.phoneNumberVerified || false,
+          emailVerified: data.emailVerified || false,
+        },
+      });
+      await tx.account.create({
+        data: {
+          userId: newUser.id,
+          provider: provider,
+          providerAccountId: providerAccountId,
+        },
+      });
+
+      return newUser;
+    });
+  }
+
+  async createUserSession(data: {
+    userId: string;
+    sessionToken: string;
+    userAgent?: string;
+    ipAddress?: string;
+    expiresAt: Date;
+  }): Promise<Session> {
+    return await this.prisma.session.create({
       data: {
-        phoneNumber: data.phoneNumber,
-        email: data.email,
-        phoneNumberVerified: data.phoneNumberVerified || false,
-        emailVerified: data.emailVerified || false,
-        profile: {
-          create: {
-            firstName: "Customer",
-          },
-        },
-      },
-      select: {
-        id: true,
-        role: true,
-        phoneNumber: true,
-        phoneNumberVerified: true,
-        email: true,
-        emailVerified: true,
-        emailVerifiedAt: true,
-        image: true,
-        isDeleted: true,
-        createdAt: true,
-        updatedAt: true,
-        profile: {
-          select: {
-            id: true,
-            userId: true,
-            firstName: true,
-            lastName: true,
-            genderId: true,
-            hasReturnRequests: true,
-            reloadLocation: true,
-            loyaltyVerified: true,
-            dateOfBirth: true,
-            bio: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-        },
+        userId: data.userId,
+        sessionToken: data.sessionToken,
+        userAgent: data.userAgent || null,
+        ipAddress: data.ipAddress || null,
+        expiresAt: data.expiresAt,
+        isRevoked: false,
       },
     });
   }

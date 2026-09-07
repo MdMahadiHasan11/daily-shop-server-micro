@@ -9,7 +9,7 @@ import { redisSubscriberService } from "./core/services/redis-subscriber.service
 import { redisService } from "./core/services/redis.service";
 import { logger } from "./core/utils/logger.utils";
 
-const PORT = env.PORT || 5000;
+const PORT = env.PORT || 5010;
 
 // Metrics interval
 const metricsInterval = setInterval(() => {

@@ -1,4 +1,4 @@
-import { Prisma, UserRole } from "@prisma/client";
+import { UserRole } from "@prisma/client";
 export interface ISession {
   userId: string;
   role: UserRole;
@@ -17,35 +17,3 @@ export interface IUserJwtPayload {
   iat: number;
   exp: number;
 }
-
-export type UserWithProfile = Prisma.UserGetPayload<{
-  select: {
-    id: true;
-    role: true;
-    phoneNumber: true;
-    phoneNumberVerified: true;
-    email: true;
-    emailVerified: true;
-    emailVerifiedAt: true;
-    image: true;
-    isDeleted: true;
-    createdAt: true;
-    updatedAt: true;
-    profile: {
-      select: {
-        id: true;
-        userId: true;
-        firstName: true;
-        lastName: true;
-        genderId: true;
-        hasReturnRequests: true;
-        reloadLocation: true;
-        loyaltyVerified: true;
-        dateOfBirth: true;
-        bio: true;
-        createdAt: true;
-        updatedAt: true;
-      };
-    };
-  };
-}>;

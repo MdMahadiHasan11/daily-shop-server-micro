@@ -4,8 +4,8 @@ export interface IMetaData {
   authId: string | null;
   email: string | null;
   phoneNumber: string | null;
-  ipAddress: string;
-  userAgent: string;
+  ipAddress?: string;
+  userAgent?: string;
   origin?: string;
   referrer?: string;
   requestId?: string;

@@ -1,6 +1,8 @@
+import { UserService } from "../api/modules/user/user.service";
 import { eventBus } from "../core/services/event-bus-rabit.service";
 import { redisSubscriberService } from "../core/services/redis-subscriber.service";
 import { logger } from "../core/utils/logger.utils";
+import { IMetaData } from "../core/utils/request-metadata";
 import { EVENTS, EventType } from "./event.constants";
 
 interface LoginInitiate {
@@ -29,7 +31,6 @@ export async function bootstrapListeners(): Promise<void> {
   await redisSubscriberService.start();
 
   // 2. ✅ RabbitMQ EventBus Subscriptions (Example Setup)
-
   await eventBus.subscribe(
     EVENTS.LOGIN_INITIATE,
     async (event: EventType<LoginInitiate>) => {
@@ -37,17 +38,45 @@ export async function bootstrapListeners(): Promise<void> {
       const identifier = phone ? phone : email;
       logger.info({ otp: event.payload }, `OTP send`);
     },
-    "auth_service_group",
+    "user_service_group",
   );
 
   await eventBus.subscribe(
-    EVENTS.FORGOT_PASSWORD,
-    async (event) => {
-      logger.info(
-        { payload: event.payload },
-        "User created event received ......................................................... 🚀",
-      );
+    EVENTS.AFTER_LOGIN_USER_CREATE,
+    async (event: any) => {
+      try {
+        const rawData = event?.payload?.payload || event?.payload || event;
+
+        const authId = rawData?.authId || rawData?.id;
+        const phoneNumber = rawData?.phoneNumber;
+        const email = rawData?.email;
+
+        if (!authId) {
+          logger.error(
+            "Auth ID is still missing! Publisher did not send it correctly.",
+          );
+          return;
+        }
+
+        const metaData: IMetaData = {
+          authId: authId,
+          email: email || null,
+          phoneNumber: phoneNumber || null,
+        };
+        const userService = new UserService();
+        await userService.createUsers(metaData);
+
+        logger.info(
+          { authId },
+          "User profile created successfully via event 🚀",
+        );
+      } catch (error) {
+        logger.error(
+          { error },
+          "Failed to create user profile from event queue ❌",
+        );
+      }
     },
-    "auth_service_group",
+    "user_service_group",
   );
 }

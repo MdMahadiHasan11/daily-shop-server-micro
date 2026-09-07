@@ -1,3 +1,4 @@
+import { AuthProvider, User } from "@prisma/client";
 import { EVENTS } from "../../../bootstrap/event.constants";
 import { BaseService } from "../../../core/base/base.service";
 import { env } from "../../../core/config/env.config";
@@ -5,7 +6,6 @@ import { AppError } from "../../../core/errors/errors";
 import { CACHE_KEYS } from "../../../core/redis/redis.constant";
 import sessionService from "../../../core/services/session.service";
 import { AuthRepository } from "./auth.repository";
-import { UserWithProfile } from "./auth.type";
 import AuthUtils from "./utils/auth.utils";
 
 export class AuthService extends BaseService {
@@ -16,7 +16,7 @@ export class AuthService extends BaseService {
     this.repository = new AuthRepository();
     this.serviceName = "AuthService";
   }
-  async userExist(identifier: string): Promise<UserWithProfile | null> {
+  async userExist(identifier: string): Promise<User | null> {
     return await this.repository.getUserByIdentity(identifier);
   }
 
@@ -35,6 +35,7 @@ export class AuthService extends BaseService {
         ttl: TTL_SECONDS,
       });
 
+      // here email service call after todo
       await this.eventBus.publish(EVENTS.LOGIN_INITIATE, {
         payload: {
           name: "Valued User",
@@ -65,7 +66,7 @@ export class AuthService extends BaseService {
     data: {
       accessToken: string;
       refreshToken: string;
-      user: UserWithProfile;
+      user: User;
       isNewUser: Boolean;
     };
   }> {
@@ -89,35 +90,45 @@ export class AuthService extends BaseService {
       const isNewUser = user ? false : true;
 
       if (!user) {
-        user = await this.repository.createUserWithProfile({
+        user = await this.repository.createUserWithProfileAndAccount({
           phoneNumber: phone || null,
           email: email || null,
           phoneNumberVerified: !!phone,
           emailVerified: !!email,
+          provider: phone ? AuthProvider.PHONE : AuthProvider.LOCAL,
+          providerAccountId: identifier,
+        });
+        await this.eventBus.publish(EVENTS.AFTER_LOGIN_USER_CREATE, {
+          payload: {
+            authId: user.id,
+            phoneNumber: phone || null,
+            email: email || null,
+          },
         });
       }
 
-      // const token = jwtHelper.generateToken({
-      //   id: user?.id,
-      //   email: user?.email,
-      //   phoneNumber: user?.phoneNumber,
-      //   role: user?.role,
-      // });
+      const { accessToken, refreshToken, jti, expired } =
+        await sessionService.createSession(
+          user?.id,
+          user?.role,
+          user?.email,
+          user?.phoneNumber,
+          userAgent,
+          ipAddress,
+        );
 
-      const { accessToken, refreshToken } = await sessionService.createSession(
-        user?.id,
-        user?.role,
-        user?.email,
-        user?.phoneNumber,
-
-        userAgent,
-        ipAddress,
-      );
+      const expiresAtDate = new Date(Date.now() + expired * 1000);
+      await this.repository.createUserSession({
+        userId: user.id,
+        sessionToken: jti,
+        userAgent: userAgent,
+        ipAddress: ipAddress,
+        expiresAt: expiresAtDate,
+      });
 
       return {
         success: true,
         message: "Verification and login successful",
-
         data: { accessToken, refreshToken, user, isNewUser },
       };
     } catch (error) {

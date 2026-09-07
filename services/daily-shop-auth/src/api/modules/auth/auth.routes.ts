@@ -9,7 +9,6 @@ export class AuthRoutes extends BaseRoutes<AuthController> {
   }
 
   protected registerRoutes(): void {
-    // initiate login
     this.router.post(
       "/login-register-initiate",
       this.validateRequest(AuthValidators.login),
@@ -18,7 +17,7 @@ export class AuthRoutes extends BaseRoutes<AuthController> {
 
     // verify login
     this.router.post(
-      "/login-register-verify",
+      "/login-register",
       this.validateRequest(AuthValidators.verify),
       this.controller.loginVerify,
     );

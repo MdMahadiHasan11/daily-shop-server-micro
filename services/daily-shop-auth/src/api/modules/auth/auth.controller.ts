@@ -16,24 +16,8 @@ export class AuthController extends BaseController {
   }
 
   loginInitiate = this.asyncHandler(async (req: Request, res: Response) => {
-    const { phone, email, password } = req.validatedBody
-      .body as LoginDto["body"];
-
+    const { phone, email } = req.validatedBody.body as LoginDto["body"];
     const identifier = phone ? phone : email;
-
-    // const user = await this.service.userExist(identifier as string);
-
-    // if (password) {
-    //   const isPasswordValid = await this.service.verifyPassword(user, password);
-    //   if (!isPasswordValid) {
-    //     return this.errorResponse(res, "Invalid credentials", 401);
-    //   }
-
-    //   return this.successResponse(res, {
-    //     message: "Login successful",
-    //     user,
-    //   });
-    // }
 
     await this.service.initiateLoginOtp(phone, email);
 
@@ -60,23 +44,16 @@ export class AuthController extends BaseController {
       return this.errorResponse(res, result.message, 400);
     }
 
-    // * email send for verification
-    // eventBus.publish(EVENTS.LOGIN_VERIFY, {
-    //   fullName: result.user.fullName,
-    //   username: result.user.username,
-    //   email: result.user.email,
-    // });
-
     AuthUtils.setAuthCookies(res, {
       accessToken: result?.data?.accessToken,
       refreshToken: result?.data?.refreshToken,
     });
 
-    const { profile, ...allData } = result.data.user;
+    const user = result.data.user;
 
     return this.successResponse(
       res,
-      { user: allData, isNewUser: result.data.isNewUser },
+      { user, isNewUser: result.data.isNewUser },
       200,
     );
   });

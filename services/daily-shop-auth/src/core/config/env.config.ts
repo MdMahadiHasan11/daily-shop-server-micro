@@ -36,7 +36,7 @@ export const env = cleanEnv(process.env, {
     default: "development",
   }),
   DATABASE_URL: str(),
-  PORT: num({ default: 5000 }),
+  PORT: num({ default: 5010 }),
   ALLOWED_ORIGINS: str(),
   REDIS_URL: str(),
 
@@ -51,11 +51,11 @@ export const env = cleanEnv(process.env, {
   JWT_ACCESS_EXPIRATION: str({ default: "7d" }),
   JWT_REFRESH_EXPIRATION: str({ default: "30d" }),
 
-  OTP_TTL_SECONDS: num({ default: 30 }), // ওটিপির মেয়াদ (ডিফল্ট ৩০ সেকেন্ড)
-  SESSION_TTL_SECONDS: num({ default: 604800 }), // সেশনের মেয়াদ ৭ দিন (7 * 24 * 60 * 60)
+  OTP_TTL_SECONDS: num({ default: 30 }),
+  SESSION_TTL_SECONDS: num({ default: 604800 }),
 
-  COOKIE_ACCESS_TOKEN_MAX_AGE_DAYS: num({ default: 1 }), // ডিফল্ট ১ দিন বা আপনার প্রয়োজন অনুযায়ী
-  COOKIE_REFRESH_TOKEN_MAX_AGE_DAYS: num({ default: 7 }), // ডিফল্ট ৭ দিন
+  COOKIE_ACCESS_TOKEN_MAX_AGE_DAYS: num({ default: 1 }),
+  COOKIE_REFRESH_TOKEN_MAX_AGE_DAYS: num({ default: 7 }),
 
   //   SMTP_EMAIL: email(),
   DEFAULT_CURRENCY: currencyValidator(),

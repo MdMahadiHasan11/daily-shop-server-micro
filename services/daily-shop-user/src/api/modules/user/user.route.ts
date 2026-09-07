@@ -8,20 +8,22 @@ export class UserRoutes extends BaseRoutes<UserController> {
   }
 
   protected registerRoutes(): void {
-    this.router.post(
-      "/",
-      this.validateService.auth,
-      this.controller.createUser,
-    );
+    // this.router.post(
+    //   "/",
+    //   this.validateService.auth,
+    //   this.controller.createUser,
+    // );
+
+    // admin
     this.router.get(
       "/",
-      this.validateService.auth,
       this.validateRequest(UserValidators.listUsers),
       this.controller.getAllUser,
     );
 
     this.router.get(
       "/me",
+      this.validateService.gateway,
       this.validateRequest(UserValidators.getMeSchema),
       this.controller.getMe,
     );
