@@ -4,7 +4,6 @@ import {
   ListWithSummary,
   PaginationResult,
 } from "../../common/interfaces/pagination.types";
-import { AppError } from "../errors/errors";
 import db from "../lib/prisma";
 
 function setNestedDateFilter(
@@ -20,7 +19,6 @@ function setNestedDateFilter(
       ...filter,
     };
   } else {
-    // nested → recurse
     obj[key] = obj[key] || {};
     setNestedDateFilter(obj[key], path.slice(1), filter);
   }
@@ -117,21 +115,6 @@ export abstract class BaseRepository<T extends keyof PrismaClient> {
     });
   }
 
-  async sum(params?: {
-    where?: Prisma.Args<PrismaClient[T], "findMany">["where"];
-    sum?: Prisma.Args<PrismaClient[T], "findMany">["select"];
-  }) {
-    if (!params?.sum) return {};
-
-    return db.withRetry(async () => {
-      // @ts-ignore - Dynamic model access
-      return this.prisma[this.modelName].aggregate({
-        where: params?.where,
-        _sum: params?.sum,
-      });
-    });
-  }
-
   async update<U>(
     id: string | number,
     data: Prisma.Args<PrismaClient[T], "update">["data"],
@@ -168,7 +151,6 @@ export abstract class BaseRepository<T extends keyof PrismaClient> {
   }
 
   // * soft delete
-  // * soft delete
   async softDelete<U = any>(
     id: string | number,
     options?: {
@@ -195,26 +177,6 @@ export abstract class BaseRepository<T extends keyof PrismaClient> {
       return await this.prisma[this.modelName].update({
         where: { id, companyId },
         data: { isDeleted: false },
-      });
-    });
-  }
-
-  // * toggle status
-  async toggleStatus<T = any>(
-    id: string | number,
-    companyId: string | number,
-  ): Promise<T> {
-    const data = (await this.findById(id)) as { isActive: boolean };
-
-    if (!data) {
-      throw new AppError(`Record not found with ID:${id}`);
-    }
-
-    return await db.withRetry(async () => {
-      // @ts-ignore - Dynamic model access
-      return await this.prisma[this.modelName].update({
-        where: { id, companyId },
-        data: { isActive: !data.isActive },
       });
     });
   }
@@ -266,7 +228,6 @@ export abstract class BaseRepository<T extends keyof PrismaClient> {
     params: {
       include?: Prisma.Args<PrismaClient[T], "findMany">["include"];
       select?: Prisma.Args<PrismaClient[T], "findMany">["select"];
-      sum?: Prisma.Args<PrismaClient[T], "findMany">["select"];
       where?: Prisma.Args<PrismaClient[T], "findMany">["where"];
       metaData?: {
         companyId?: string;
@@ -295,9 +256,6 @@ export abstract class BaseRepository<T extends keyof PrismaClient> {
     };
 
     // where condition
-
-    // ensure where exists
-    // ✅ AUTO MULTI-TENANT FILTER
     if (params.metaData?.companyId) {
       params.where = {
         companyId: params.metaData.companyId,
@@ -335,7 +293,7 @@ export abstract class BaseRepository<T extends keyof PrismaClient> {
       }
     }
 
-    const [data, total, sum] = await Promise.all([
+    const [data, total] = await Promise.all([
       this.findAll<U>({
         where: params.where,
         select: params.select,
@@ -345,7 +303,6 @@ export abstract class BaseRepository<T extends keyof PrismaClient> {
         orderBy,
       }),
       this.count(params.where),
-      this.sum({ where: params.where, sum: params.sum }),
     ]);
 
     const totalPages = Math.ceil(total / limit);
@@ -360,7 +317,6 @@ export abstract class BaseRepository<T extends keyof PrismaClient> {
     };
 
     return {
-      sum,
       data,
       pagination,
     };

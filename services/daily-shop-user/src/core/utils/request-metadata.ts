@@ -1,13 +1,9 @@
 import { Request } from "express";
-import { IUser } from "../../types/global";
 
 export interface IMetaData {
-  userId: string;
+  authId: string | null;
   email: string | null;
   phoneNumber: string | null;
-  jti: string | null;
-  // role: UserRole;
-
   ipAddress: string;
   userAgent: string;
   origin?: string;
@@ -16,19 +12,18 @@ export interface IMetaData {
 }
 
 export function getRequestMetadata(req: Request): IMetaData {
-  const user = (req as any).user as IUser;
+  const authId = req.headers["x-auth-user-id"] as string;
+  const email = req.headers["x-auth-email"] as string;
+  const phoneNumber = req.headers["x-auth-phone"] as string;
 
   return {
-    userId: user?.userId,
-    email: user?.email,
-    phoneNumber: user?.phoneNumber,
-    jti: user?.jti,
-    // role: user?.role,
-
+    authId,
+    email,
+    phoneNumber,
     ipAddress: req.ip || (req.socket?.remoteAddress as string),
     userAgent: req.headers["user-agent"] as string,
-    origin: req.headers["origin"],
-    referrer: req.headers["referer"],
+    origin: req.headers["origin"] as string,
+    referrer: req.headers["referer"] as string,
     requestId: req.headers["x-request-id"] as string,
   };
 }

@@ -11,6 +11,7 @@ export class UserRoutes extends BaseRoutes<UserController> {
     this.router.post("/", this.controller.createUser);
     this.router.get(
       "/",
+      this.validateService.auth,
       this.validateRequest(UserValidators.listUsers),
       this.controller.getAllUser,
     );
