@@ -1,7 +1,6 @@
 import { UserProfileMaster } from "@prisma/client";
 import { PaginationResult } from "../../../common/interfaces";
 import { BaseService } from "../../../core/base/base.service";
-
 import { AppError } from "../../../core/errors/errors";
 import { IMetaData } from "../../../core/utils/request-metadata";
 import { UserRepository } from "./user.repository";
@@ -15,6 +14,7 @@ export class UserService extends BaseService {
     this.repository = new UserRepository();
     this.serviceName = "UserService";
   }
+
   async createUsers(metaData: IMetaData): Promise<UserProfileMaster> {
     try {
       if (!metaData.authId) {
@@ -40,6 +40,65 @@ export class UserService extends BaseService {
       return await this.repository.getAllUser(query);
     } catch (error) {
       this._handleError(error, "getAllUsers", { query });
+      throw error;
+    }
+  }
+
+  async getUserDetails(
+    userId: string,
+    includeLocations: boolean = false,
+  ): Promise<UserProfileMaster> {
+    try {
+      const includeQuery: any = {
+        profile: true,
+      };
+
+      if (includeLocations) {
+        includeQuery.addresses = {
+          where: { isDeleted: false },
+        };
+      }
+      const user = await this.repository.getUserFullDetails(
+        userId,
+        includeQuery,
+      );
+      if (!user) {
+        throw new AppError(
+          "User profile not found",
+          404,
+          true,
+          undefined,
+          "USER_NOT_FOUND",
+        );
+      }
+      return user;
+    } catch (error) {
+      this._handleError(error, "getUserDetails", { userId });
+      throw error;
+    }
+  }
+
+  async updateFullProfile(userId: string, updateData: any) {
+    try {
+      const includeQuery: any = {
+        profile: true,
+      };
+      const user = await this.repository.getUserFullDetails(
+        userId,
+        includeQuery,
+      );
+      if (!user) {
+        throw new AppError(
+          "User not found",
+          404,
+          true,
+          undefined,
+          "USER_NOT_FOUND",
+        );
+      }
+      return await this.repository.updateFullUserProfile(userId, updateData);
+    } catch (error) {
+      this._handleError(error, "updateFullProfile", { userId, updateData });
       throw error;
     }
   }
