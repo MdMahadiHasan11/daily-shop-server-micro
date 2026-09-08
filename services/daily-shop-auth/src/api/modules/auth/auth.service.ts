@@ -6,7 +6,10 @@ import { env } from "../../../core/config/env.config";
 import { AppError } from "../../../core/errors/errors";
 import { CACHE_KEYS } from "../../../core/redis/redis.constant";
 import sessionService from "../../../core/services/session.service";
+import jwtHelper from "../../../core/utils/jwt.helper";
+import { IMetaData } from "../../../core/utils/request-metadata";
 import { AuthRepository } from "./auth.repository";
+import { ISession } from "./auth.type";
 import AuthUtils from "./utils/auth.utils";
 export class AuthService extends BaseService {
   private repository: AuthRepository;
@@ -140,13 +143,13 @@ export class AuthService extends BaseService {
     }
   }
 
-  async getMe(userId: string): Promise<any> {
+  async getMe(metaData: IMetaData): Promise<any> {
     try {
-      if (!userId) {
+      if (!metaData?.userId) {
         throw new AppError("Unauthorized user request", 401);
       }
 
-      const cacheKey = CACHE_KEYS.userProfile(userId);
+      const cacheKey = CACHE_KEYS.userProfile(metaData?.userId);
       const cachedUser = await this.cache.get(cacheKey);
 
       if (cachedUser) {
@@ -155,21 +158,18 @@ export class AuthService extends BaseService {
           : cachedUser;
       }
 
-      const authUser = await this.repository.getUserByIdentity(userId);
+      const authUser = await this.repository.getUserByIdentity(
+        metaData?.userId,
+      );
       if (!authUser) {
         throw new AppError("User profile not found", 404);
       }
 
-      const userServiceUrl = "http://localhost:5011/v1";
-
-      const userProfileResponse = await axios.get(`${userServiceUrl}/user/me`, {
-        headers: {
-          "x-auth-user-id": authUser.id,
-          "x-auth-email": authUser.email || "",
-          "x-auth-phone": authUser.phoneNumber || "",
-          "x-internal-secret": "gateway",
-        },
-      });
+      const userProfileResponse = await this.service.get(
+        "user",
+        "/me",
+        metaData,
+      );
 
       const fullUserProfile =
         userProfileResponse.data?.data || userProfileResponse.data;
@@ -183,24 +183,51 @@ export class AuthService extends BaseService {
       if (error instanceof AppError) {
         throw error;
       }
-      if (axios.isAxiosError(error)) {
-        const status = error.response?.status || 500;
-        const errorData: any = error.response?.data;
-        const message =
-          errorData?.message ||
-          "Failed to fetch user profile from user service";
 
-        throw new AppError(
-          message,
-          status,
-          true,
-          errorData?.stack,
-          errorData?.code,
+      if (axios.isAxiosError(error)) {
+        this.handleAxiosError(
+          error,
+          "Failed to fetch user profile from user service",
         );
       }
 
-      this._handleError(error, "getMe", { userId });
-      throw error;
+      this._handleError(error, "getMe", { userId: metaData?.userId });
+      const errorDetails = error instanceof Error ? error.stack : error;
+      throw new AppError(
+        "Internal Server Error",
+        500,
+        false,
+        errorDetails as any,
+      );
+    }
+  }
+
+  async logout(accessToken?: string): Promise<void> {
+    try {
+      if (!accessToken) {
+        return;
+      }
+
+      const decoded = await jwtHelper.verifyAccessToken<{ jti: string }>(
+        accessToken,
+      );
+
+      if (decoded?.jti) {
+        const session = (await sessionService.validateSession(
+          decoded.jti,
+        )) as ISession;
+
+        if (session?.valid) {
+          await sessionService.revokeSession(decoded.jti);
+        }
+
+        await this.repository.updateUserSessionStatusByToken(
+          decoded.jti,
+          false,
+        );
+      }
+    } catch (error) {
+      this._handleError(error, "logout_warning");
     }
   }
 }

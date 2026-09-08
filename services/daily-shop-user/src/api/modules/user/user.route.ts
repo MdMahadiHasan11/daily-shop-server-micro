@@ -23,14 +23,14 @@ export class UserRoutes extends BaseRoutes<UserController> {
 
     this.router.get(
       "/me",
-      this.validateService.gateway,
+      this.validateService.allow(["gateway", "auth"]),
       this.validateRequest(UserValidators.getMeSchema),
       this.controller.getMe,
     );
 
     this.router.patch(
       "/profile",
-      this.validateService.gateway,
+      this.validateService.allow(["gateway"]),
       this.validateRequest(UserValidators.updateFullProfile),
       this.controller.updateProfile,
     );

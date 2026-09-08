@@ -72,4 +72,18 @@ export class AuthRepository extends BaseRepository<"user"> {
       },
     });
   }
+
+  async updateUserSessionStatusByToken(
+    sessionToken: string,
+    isRevoked: boolean = true,
+  ): Promise<any> {
+    return await this.prisma.session.updateMany({
+      where: {
+        sessionToken: sessionToken,
+      },
+      data: {
+        isRevoked: isRevoked,
+      },
+    });
+  }
 }

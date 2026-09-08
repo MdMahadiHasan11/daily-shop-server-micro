@@ -2,45 +2,36 @@ import { NextFunction, Request, Response } from "express";
 import { env } from "../../core/config/env.config";
 
 export class authenticate {
-  static gateway(req: Request, res: Response, next: NextFunction) {
-    const clientSecret = req.headers["x-internal-secret"];
-    const expectedSecret = env.GATEWAY_SECRET;
+  static allow(allowedServices: ("gateway" | "auth" | "email")[]) {
+    return (req: Request, res: Response, next: NextFunction) => {
+      const clientSecret = req.headers["x-internal-secret"];
 
-    if (!clientSecret || clientSecret !== expectedSecret) {
-      return res.status(403).json({
-        success: false,
-        message: "Access Denied: Invalid Gateway Service Secret!",
+      if (!clientSecret) {
+        return res.status(403).json({
+          success: false,
+          message: "Access Denied: No Internal Secret Provided!",
+        });
+      }
+
+      const secretMap: Record<string, string | undefined> = {
+        gateway: env.GATEWAY_SECRET,
+        auth: env.AUTH_SECRET,
+        email: env.EMAIL_SECRET,
+      };
+
+      const isAuthorized = allowedServices.some((service) => {
+        const expectedSecret = secretMap[service];
+        return expectedSecret && clientSecret === expectedSecret;
       });
-    }
 
-    next();
-  }
+      if (!isAuthorized) {
+        return res.status(403).json({
+          success: false,
+          message: "Access Denied: Unauthorized Service Call!",
+        });
+      }
 
-  static auth(req: Request, res: Response, next: NextFunction) {
-    const clientSecret = req.headers["x-internal-secret"];
-    const expectedSecret = process.env.AUTH_TO_USER_SECRET;
-
-    if (!clientSecret || clientSecret !== expectedSecret) {
-      return res.status(403).json({
-        success: false,
-        message: "Access Denied: Invalid Auth Service Secret!",
-      });
-    }
-
-    next();
-  }
-
-  static email(req: Request, res: Response, next: NextFunction) {
-    const clientSecret = req.headers["x-internal-secret"];
-    const expectedSecret = process.env.EMAIL_TO_USER_SECRET;
-
-    if (!clientSecret || clientSecret !== expectedSecret) {
-      return res.status(403).json({
-        success: false,
-        message: "Access Denied: Invalid Email Service Secret!",
-      });
-    }
-
-    next();
+      next();
+    };
   }
 }

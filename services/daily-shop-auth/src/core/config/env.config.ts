@@ -60,6 +60,9 @@ export const env = cleanEnv(process.env, {
   //   SMTP_EMAIL: email(),
   DEFAULT_CURRENCY: currencyValidator(),
   FISCAL_YEAR_START: dateFormatValidator(),
+  AUTH_INTERNAL_SECRET: str(),
+
+  USER_SERVICE_URL: str(),
 });
 
 export type Env = typeof env;

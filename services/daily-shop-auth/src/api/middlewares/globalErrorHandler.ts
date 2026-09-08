@@ -1,5 +1,5 @@
+import axios from "axios";
 import { NextFunction, Request, Response } from "express";
-
 import { AppError } from "../../core/errors/errors";
 
 /**
@@ -74,4 +74,31 @@ const sendErrorResponse = (err: AppError, req: Request, res: Response) => {
       context: err.context,
     }),
   });
+};
+
+export const handleAxiosError = (
+  error: unknown,
+  defaultMessage = "Inter-service communication failed",
+): never => {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status || 502;
+    const errorData: any = error.response?.data;
+
+    const message = errorData?.message || errorData?.error || defaultMessage;
+
+    throw new AppError(
+      message,
+      status,
+      true,
+      (errorData?.details || errorData?.stack) as any,
+      errorData?.code || "INTER_SERVICE_ERROR",
+    );
+  }
+
+  if (error instanceof AppError) {
+    throw error;
+  }
+
+  const fallbackDetails = error instanceof Error ? error.stack : error;
+  throw new AppError(defaultMessage, 500, false, fallbackDetails as any);
 };

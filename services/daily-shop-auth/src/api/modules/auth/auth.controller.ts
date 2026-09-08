@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { BaseController } from "../../../core/base/base.controller";
 import sessionService from "../../../core/services/session.service";
 import jwtHelper from "../../../core/utils/jwt.helper";
+import { IMetaData } from "../../../core/utils/request-metadata";
 import { AuthService } from "./auth.service";
 import { ISession, IUserJwtPayload } from "./auth.type";
 import { LoginDto } from "./auth.validator";
@@ -99,8 +100,8 @@ export class AuthController extends BaseController {
   }
 
   getMe = this.asyncHandler(async (req: Request, res: Response) => {
-    const metaData = this.getReqMetadata(req);
-    const user = await this.service.getMe(metaData.userId as string);
+    const metaData: IMetaData = this.getReqMetadata(req);
+    const user = await this.service.getMe(metaData as IMetaData);
     return this.successResponse(res, user, 200);
   });
 
@@ -112,24 +113,25 @@ export class AuthController extends BaseController {
           ? req.headers.authorization.split(" ")[1]
           : undefined);
 
-      if (accessToken) {
-        try {
-          const decoded = await jwtHelper.verifyAccessToken<{ jti: string }>(
-            accessToken,
-          );
+      // if (accessToken) {
+      //   try {
+      //     const decoded = await jwtHelper.verifyAccessToken<{ jti: string }>(
+      //       accessToken,
+      //     );
 
-          if (decoded?.jti) {
-            const session = (await sessionService.validateSession(
-              decoded.jti,
-            )) as ISession;
-            if (session?.valid) {
-              await sessionService.revokeSession(decoded.jti);
-            }
-          }
-        } catch (err) {
-          console.log("Logout token verification skipped or failed:", err);
-        }
-      }
+      //     if (decoded?.jti) {
+      //       const session = (await sessionService.validateSession(
+      //         decoded.jti,
+      //       )) as ISession;
+      //       if (session?.valid) {
+      //         await sessionService.revokeSession(decoded.jti);
+      //       }
+      //     }
+      //   } catch (err) {
+      //     console.log("Logout token verification skipped or failed:", err);
+      //   }
+      // }
+      await this.service.logout(accessToken);
 
       const cookieOptions = {
         httpOnly: true,

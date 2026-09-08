@@ -1,7 +1,9 @@
 import cuid from "cuid";
 import { performance } from "perf_hooks";
+import { handleAxiosError } from "../../api/middlewares/globalErrorHandler";
 import { AppError, ErrorThrower } from "../errors/errors";
 import db from "../lib/prisma";
+import { microserviceClient } from "../services/axios.service";
 import { eventBus } from "../services/event-bus-rabit.service";
 import { redisService } from "../services/redis.service";
 import { logger } from "../utils/logger.utils";
@@ -14,6 +16,11 @@ export abstract class BaseService {
 
   protected serviceName: string = this.constructor.name;
   private readonly startupTime = Date.now();
+  protected service = microserviceClient;
+
+  protected handleAxiosError(error: unknown, defaultMessage?: string): never {
+    return handleAxiosError(error, defaultMessage);
+  }
 
   async getWithCache<T>(
     key: string,

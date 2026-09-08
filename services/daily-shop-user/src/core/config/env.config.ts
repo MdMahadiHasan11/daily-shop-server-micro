@@ -62,8 +62,10 @@ export const env = cleanEnv(process.env, {
   FISCAL_YEAR_START: dateFormatValidator(),
 
   //service to secret
-  AUTH_TO_USER_SECRET: str(),
+  USER_SECRET: str(),
   GATEWAY_SECRET: str(),
+  AUTH_SECRET: str(),
+  EMAIL_SECRET: str(),
 });
 
 export type Env = typeof env;
