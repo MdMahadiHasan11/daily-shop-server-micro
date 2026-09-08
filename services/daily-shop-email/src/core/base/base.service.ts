@@ -3,35 +3,20 @@ import { performance } from "perf_hooks";
 import { AppError, ErrorThrower } from "../errors/errors";
 import db from "../lib/prisma";
 import { eventBus } from "../services/event-bus-rabit.service";
-import { redisService } from "../services/redis.service";
+
 import { logger } from "../utils/logger.utils";
 
 export abstract class BaseService {
   // ✅ Prisma client instance from your DatabaseService wrapper
   protected readonly db = db.prisma;
-  protected readonly cache = redisService;
   protected readonly eventBus = eventBus;
 
   protected serviceName: string = this.constructor.name;
   private readonly startupTime = Date.now();
 
-  async getWithCache<T>(
-    key: string,
-    fetcher: () => Promise<T>,
-    ttl = 3600,
-  ): Promise<T> {
-    const cached = await this.cache.get<T>(key);
-    if (cached) return cached;
-
-    const freshData = await fetcher();
-    await this.cache.set(key, freshData, { ttl });
-    return freshData;
-  }
-
   async healthCheck() {
     const checks = {
       database: await this._checkDatabase(),
-      cache: await this.cache.healthCheck(),
       eventBus: await this.eventBus.healthCheck(),
       uptime: process.uptime(),
       serviceUptime: (Date.now() - this.startupTime) / 1000,
@@ -97,7 +82,6 @@ export abstract class BaseService {
 
   async shutdown() {
     logger.info(`Shutting down ${this.serviceName}`);
-    await this.cache.disconnect();
   }
 
   appError = AppError;

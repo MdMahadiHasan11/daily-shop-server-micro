@@ -27,11 +27,11 @@ app.use("/metrics", metricsRouter);
 app.use("/uploads", express.static("uploads"));
 
 // Base Route
-app.get("/", (_req, res) => {
+app.get("/message", (_req, res) => {
   return responseUtil.success(res, { status: "ok" });
 });
 
-app.get("/health", async (_req, res) => {
+app.get("/message/health", async (_req, res) => {
   const isHealthy = await db.healthCheck();
 
   res.status(isHealthy ? 200 : 503).json({

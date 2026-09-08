@@ -1,7 +1,7 @@
 import { EmailService } from "../api/modules/email/email.service";
 import { SmsService } from "../api/modules/phone/sms.service";
 import { eventBus } from "../core/services/event-bus-rabit.service";
-import { redisSubscriberService } from "../core/services/redis-subscriber.service";
+
 import { logger } from "../core/utils/logger.utils";
 import { EVENTS, EventType } from "./event.constants";
 
@@ -14,8 +14,6 @@ interface LoginInitiate {
 }
 
 export async function bootstrapListeners(): Promise<void> {
-  await redisSubscriberService.start();
-
   await eventBus.subscribe(
     EVENTS.LOGIN_INITIATE,
     async (event: EventType<any>) => {

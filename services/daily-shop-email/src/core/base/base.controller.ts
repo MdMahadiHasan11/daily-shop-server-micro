@@ -1,13 +1,11 @@
 import { NextFunction, Request, Response } from "express";
 import { ZodError, ZodSchema } from "zod";
 import { AppError } from "../errors/errors";
-import { getRequestMetadata } from "../utils/request-metadata";
 import { responseUtil } from "../utils/response.util";
 
 export abstract class BaseController {
   protected successResponse = responseUtil.success;
   protected errorResponse = responseUtil.error;
-  protected getReqMetadata = getRequestMetadata;
 
   protected queryParse<T extends { query: any }>(
     req: Request,

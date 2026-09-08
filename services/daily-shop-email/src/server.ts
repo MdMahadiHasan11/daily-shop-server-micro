@@ -5,13 +5,11 @@ import { env } from "./core/config/env.config";
 import db from "./core/lib/prisma";
 import { eventBus } from "./core/services/event-bus-rabit.service";
 import { metrics } from "./core/services/metrics.service";
-import { redisSubscriberService } from "./core/services/redis-subscriber.service";
-import { redisService } from "./core/services/redis.service";
+
 import { logger } from "./core/utils/logger.utils";
 
-const PORT = env.PORT || 5011;
+const PORT = env.PORT || 5050;
 
-// Metrics interval
 const metricsInterval = setInterval(() => {
   const memory = process.memoryUsage();
 
@@ -24,12 +22,7 @@ const initServices = async () => {
   try {
     await db.init();
     logger.info("⚙️ Database initialized");
-
-    await redisService.healthCheck();
-
-    // ✅ Initialize RabbitMQ EventBus Connection
     await eventBus.init();
-
     await bootstrapListeners();
     logger.info("🔔 Redis Expiration & EventBus Listeners initialized");
   } catch (err) {
@@ -44,7 +37,7 @@ async function startServer() {
 
     const server = app.listen(PORT, () => {
       logger.info(`🌍 Environment: ${env.NODE_ENV}`);
-      logger.info(`🚀 Server running on http://localhost:${PORT}`);
+      logger.info(`Message Server running on http://localhost:${PORT}`);
     });
 
     // 🛑 Safe Graceful Shutdown Handler
@@ -57,13 +50,7 @@ async function startServer() {
           logger.info("HTTP Server closed. Closing connections...");
 
           try {
-            // ✅ Safely disconnect EventBus along with DB and Redis
-            await Promise.all([
-              db.disconnect(),
-              redisService.disconnect(),
-              redisSubscriberService.disconnect(),
-              eventBus.close(), // ✅ EventBus connection close
-            ]);
+            await Promise.all([db.disconnect(), eventBus.close()]);
 
             logger.info(
               "👋 All connections (DB, Redis, Subscriber & EventBus) closed safely",
@@ -90,7 +77,6 @@ async function startServer() {
   }
 }
 
-// Global Error Handlers
 process.on("uncaughtException", (err) => {
   logger.error({ err }, "💥 UNCAUGHT EXCEPTION");
   process.exit(1);

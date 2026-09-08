@@ -40,12 +40,6 @@ export const env = cleanEnv(process.env, {
   ALLOWED_ORIGINS: str(),
   REDIS_URL: str(),
   QUEUE_URL: url({ default: "" }),
-
-  //service to secret
-  USER_SECRET: str(),
-  GATEWAY_SECRET: str(),
-  AUTH_SECRET: str(),
-  EMAIL_SECRET: str(),
 });
 
 export type Env = typeof env;
