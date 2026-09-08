@@ -55,18 +55,37 @@ app.get("/session", async (req, res) => {
       (authHeader?.startsWith("Bearer ")
         ? authHeader.split(" ")[1]
         : undefined);
-    const decoded = jwtHelper.verifyAccessToken(token);
+
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const decoded = (await jwtHelper.verifyAccessToken(token)) as {
+      jti: string;
+      userId: string;
+    };
+
+    if (!decoded?.jti) {
+      return res.status(401).json({ message: "Invalid token payload" });
+    }
 
     const session = await redisService.get(`session:${decoded.jti}`);
-    if (!session) {
-      return res.status(401).json({ message: "Session expired or invalid" });
-    }
-    return res.json(session);
+
+    const dbSession = await db.prisma.session.findUnique({
+      where: {
+        sessionToken: decoded.jti,
+      },
+    });
+
+    return res.status(200).json({
+      dbSession,
+      session,
+      id: decoded.jti,
+    });
   } catch (error) {
-    return res.status(500).json({ message: "Session Expired!!!" });
+    return res.status(401).json({ message: "Session Expired!!!" });
   }
 });
-
 // Global Error Handler
 
 app.use(notFoundHandler);

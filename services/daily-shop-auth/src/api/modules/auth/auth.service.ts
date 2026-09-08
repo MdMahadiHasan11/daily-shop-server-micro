@@ -217,14 +217,11 @@ export class AuthService extends BaseService {
           decoded.jti,
         )) as ISession;
 
+        await this.repository.updateUserSessionStatusByToken(decoded.jti);
+
         if (session?.valid) {
           await sessionService.revokeSession(decoded.jti);
         }
-
-        await this.repository.updateUserSessionStatusByToken(
-          decoded.jti,
-          false,
-        );
       }
     } catch (error) {
       this._handleError(error, "logout_warning");
