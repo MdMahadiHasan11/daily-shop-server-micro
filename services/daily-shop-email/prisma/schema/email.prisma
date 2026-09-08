@@ -1,0 +1,65 @@
+model EmailTemplate {
+    id          String   @id @default(uuid())
+    name        String   @unique
+    description String?
+    subject     String
+    htmlBody    String
+    textBody    String?
+    isDeleted   Boolean  @default(false)
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    logs EmailLog[]
+
+    @@map("email_templates")
+}
+
+model EmailLog {
+    id         String         @id @default(uuid())
+    recipient  String
+    subject    String
+    status     String
+    error      String?
+    templateId String?
+    template   EmailTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+    sentAt DateTime @default(now())
+
+    isDeleted Boolean  @default(false)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@map("email_logs")
+}
+
+model SmsTemplate {
+    id          String   @id @default(uuid())
+    name        String   @unique
+    description String?
+    body        String
+    isDeleted   Boolean  @default(false)
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    logs SmsLog[]
+
+    @@map("sms_templates")
+}
+
+model SmsLog {
+    id         String       @id @default(uuid())
+    recipient  String
+    message    String
+    status     String
+    error      String?
+    templateId String?
+    template   SmsTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+    sentAt DateTime @default(now())
+
+    isDeleted Boolean  @default(false)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@map("sms_logs")
+}

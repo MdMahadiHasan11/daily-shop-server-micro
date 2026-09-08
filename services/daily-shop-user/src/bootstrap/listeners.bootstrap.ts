@@ -3,7 +3,7 @@ import { eventBus } from "../core/services/event-bus-rabit.service";
 import { redisSubscriberService } from "../core/services/redis-subscriber.service";
 import { logger } from "../core/utils/logger.utils";
 import { IMetaData } from "../core/utils/request-metadata";
-import { EVENTS, EventType } from "./event.constants";
+import { EVENTS } from "./event.constants";
 
 interface LoginInitiate {
   name?: string;
@@ -31,16 +31,6 @@ export async function bootstrapListeners(): Promise<void> {
   await redisSubscriberService.start();
 
   // 2. ✅ RabbitMQ EventBus Subscriptions (Example Setup)
-  await eventBus.subscribe(
-    EVENTS.LOGIN_INITIATE,
-    async (event: EventType<LoginInitiate>) => {
-      const { name, phone, email, otp, expiryMinutes } = event.payload;
-      const identifier = phone ? phone : email;
-      logger.info({ otp: event.payload }, `OTP send`);
-    },
-    "user_service_group",
-  );
-
   await eventBus.subscribe(
     EVENTS.AFTER_LOGIN_USER_CREATE,
     async (event: any) => {
@@ -80,4 +70,3 @@ export async function bootstrapListeners(): Promise<void> {
     "user_service_group",
   );
 }
-  
