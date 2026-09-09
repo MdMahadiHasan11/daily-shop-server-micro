@@ -1,26 +1,35 @@
-import { Router } from "express";
-import { createProxyMiddleware } from "http-proxy-middleware";
 import { env } from "../../config/gateway.config";
-import { authLimiter } from "../middlewares/rate-limiter.middleware";
+import { BaseProxyRoute, RouteDefinition } from "../middlewares/base.proxy";
 
-export class AuthProxyRoute {
-  public router = Router();
+export class AuthProxyRoute extends BaseProxyRoute {
+  protected serviceUrl = env.AUTH_SERVICE;
 
   constructor() {
+    super();
     this.initializeRoutes();
   }
 
   private initializeRoutes() {
-    this.router.use(
-      "/",
-      authLimiter,
-      createProxyMiddleware({
-        target: env.AUTH_SERVICE,
-        changeOrigin: true,
-        pathRewrite: {
-          "^/": "/v1/auth/",
-        },
-      }),
-    );
+    // const authMiddleware = middlewares.auth;
+
+    const routes: RouteDefinition[] = [
+      {
+        path: "/v1/auth/login-register-initiate",
+        method: "post",
+        middlewares: [],
+      },
+      {
+        path: "/v1/auth/login-register",
+        method: "post",
+        // middlewares: [authMiddleware],
+      },
+      {
+        path: "/api/v1/users/profile",
+        method: "put",
+        // middlewares: [authMiddleware],
+      },
+    ];
+
+    this.registerRoutes(routes);
   }
 }

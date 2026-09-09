@@ -1,23 +1,38 @@
-import { Router } from "express";
-import { createProxyMiddleware } from "http-proxy-middleware";
 import { env } from "../../config/gateway.config";
-import { verifyAuthAndInjectHeaders } from "../middlewares/auth.middleware";
+import { BaseProxyRoute, RouteDefinition } from "../middlewares/base.proxy";
 
-export class UserProxyRoute {
-  public router = Router();
+export class UserProxyRoute extends BaseProxyRoute {
+  protected serviceUrl = env.USER_SERVICE;
 
   constructor() {
+    super();
     this.initializeRoutes();
   }
 
   private initializeRoutes() {
-    this.router.use(
-      "/",
-      verifyAuthAndInjectHeaders,
-      createProxyMiddleware({
-        target: env.USER_SERVICE,
-        changeOrigin: true,
-      }),
-    );
+    // const authMiddleware = middlewares.auth;
+
+    const routes: RouteDefinition[] = [
+      // 🌐 Public Endpoints
+      {
+        path: "/api/v1/users/public-profile/:id",
+        method: "get",
+        middlewares: [],
+      },
+
+      // 🔒 Protected Endpoints
+      {
+        path: "/api/v1/users/profile",
+        method: "get",
+        // middlewares: [authMiddleware],
+      },
+      {
+        path: "/api/v1/users/profile",
+        method: "put",
+        // middlewares: [authMiddleware],
+      },
+    ];
+
+    this.registerRoutes(routes);
   }
 }

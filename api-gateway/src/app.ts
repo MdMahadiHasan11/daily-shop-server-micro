@@ -7,7 +7,7 @@ import morgan from "morgan";
 import { globalErrorHandler } from "./api/middlewares/globalErrorHandler";
 import { notFoundHandler } from "./api/middlewares/notFound.middleware";
 import { globalLimiter } from "./api/middlewares/rate-limiter.middleware";
-import { setupProxyRoutes } from "./api/routes/proxy.routes";
+import gatewayRouter from "./api/routes";
 
 const app: Application = express();
 
@@ -25,12 +25,10 @@ app.get("/gateway/health", (_req: Request, res: Response) => {
   });
 });
 
-setupProxyRoutes(app);
-
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
-
+app.use("/", gatewayRouter);
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
 
