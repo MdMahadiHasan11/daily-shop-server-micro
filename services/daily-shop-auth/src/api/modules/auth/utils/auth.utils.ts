@@ -3,15 +3,11 @@ import crypto, { randomUUID } from "crypto";
 import { Response } from "express";
 import { env } from "../../../../core/config/env.config";
 import { AppError, ErrorThrower } from "../../../../core/errors/errors";
-import jwtHelper from "../../../../core/utils/jwt.helper";
 interface TAuthCookiePayload {
   accessToken: string;
   refreshToken?: string;
 }
 class AuthUtils {
-  /**
-   * Create SHA-256 hash
-   */
   static createHash(value: string): string {
     try {
       return crypto.createHash("sha256").update(value).digest("hex");
@@ -26,9 +22,6 @@ class AuthUtils {
     }
   }
 
-  /**
-   * Compare hash
-   */
   static compareHash(value: string, hashedValue: string): boolean {
     try {
       return this.createHash(value) === hashedValue;
@@ -43,9 +36,6 @@ class AuthUtils {
     }
   }
 
-  /**
-   * Bcrypt hash password
-   */
   static async hashPassword(password: string): Promise<string> {
     try {
       return await bcrypt.hash(password, 10);
@@ -60,9 +50,6 @@ class AuthUtils {
     }
   }
 
-  /**
-   * Compare password
-   */
   static async comparePassword(
     plainPassword: string,
     hashedPassword: string,
@@ -75,33 +62,6 @@ class AuthUtils {
     return isMatch;
   }
 
-  /**
-   * Refresh tokens
-   */
-  // static async refreshTokens(refreshToken: string) {
-  //   try {
-  //     const decoded = jwtHelper.verifyToken(refreshToken);
-  //     delete decoded.iat;
-  //     delete decoded.exp;
-
-  //     return {
-  //       newAccessToken: jwtHelper.generateToken(decoded),
-  //       newRefreshToken: jwtHelper.generateRefreshToken(decoded),
-  //     };
-  //   } catch {
-  //     throw new AppError(
-  //       "Invalid refresh token",
-  //       401,
-  //       true,
-  //       undefined,
-  //       "INVALID_REFRESH_TOKEN",
-  //     );
-  //   }
-  // }
-
-  /**
-   * Password strength
-   */
   static validatePasswordStrength(password: string) {
     const minLength = 8;
 

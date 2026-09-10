@@ -13,7 +13,6 @@ export interface PaginationOptions {
  * Pagination response data
  */
 export interface PaginationResult<T> {
-  sum?: any;
   data: T[];
   pagination: {
     total: number;

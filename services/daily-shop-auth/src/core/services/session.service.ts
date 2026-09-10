@@ -16,20 +16,20 @@ class SessionService {
   ) {
     const { accessToken, refreshToken, jti } =
       jwtHelper.generateAccessAndRefresh({
-        userId,
+        id: userId,
         role,
         email,
-        phoneNumber,
+        phone: phoneNumber,
       });
     const expired = env.SESSION_TTL_SECONDS;
 
     await this.cache.set(
       `session:${jti}`,
       JSON.stringify({
-        userId,
+        id:userId,
         role,
         email,
-        phoneNumber,
+        phone:phoneNumber,
         userAgent: userAgent || "unknown",
         ipAddress: ipAddress || "unknown",
         valid: true,

@@ -23,9 +23,9 @@ export class UserRepository extends BaseRepository<"userProfileMaster"> {
     return await this.transaction(async (tx) => {
       const userMaster = await tx.userProfileMaster.create({
         data: {
-          id: metaData.authId as string,
+          id: metaData.id as string,
           email: metaData.email,
-          phoneNumber: metaData.phoneNumber,
+          phoneNumber: metaData.phone,
         },
       });
 

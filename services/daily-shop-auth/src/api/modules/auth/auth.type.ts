@@ -1,18 +1,18 @@
 import { UserRole } from "@prisma/client";
 export interface ISession {
-  userId: string;
+  id: string;
   role: UserRole;
   email: string | null;
-  phoneNumber: string | null;
+  phone: string | null;
   userAgent: string;
   ipAddress: string;
   valid: boolean;
 }
 export interface IUserJwtPayload {
-  userId: string;
+  id: string;
   role: UserRole;
   email: string | null;
-  phoneNumber: string | null;
+  phone: string | null;
   jti: string;
   iat: number;
   exp: number;

@@ -33,6 +33,7 @@ export class AuthController extends BaseController {
     const userAgent = req.headers["user-agent"] || "unknown";
     const ipAddress =
       (req.headers["x-forwarded-for"] as string) || req.ip || "unknown";
+
     const result = await this.service.verifyLoginOtp(
       phone,
       email,
@@ -45,12 +46,18 @@ export class AuthController extends BaseController {
       return this.errorResponse(res, result.message, 400);
     }
 
+    // Set authentication tokens in cookies
     AuthUtils.setAuthCookies(res, {
       accessToken: result?.data?.accessToken,
       refreshToken: result?.data?.refreshToken,
     });
 
     const user = result.data.user;
+
+    req.headers["x-user-id"] = user.id || "";
+    req.headers["x-user-email"] = user.email || "";
+    req.headers["x-user-role"] = user.role || "";
+    req.headers["x-user-phone"] = user.phoneNumber || "";
 
     return this.successResponse(
       res,
@@ -87,10 +94,10 @@ export class AuthController extends BaseController {
       }
 
       const user = {
-        userId: decoded.userId,
+        id: decoded.id,
         role: decoded.role,
         email: decoded.email || null,
-        phoneNumber: decoded.phoneNumber,
+        phone: decoded.phone || null,
         jti: decoded.jti,
       };
       return user;
@@ -113,24 +120,6 @@ export class AuthController extends BaseController {
           ? req.headers.authorization.split(" ")[1]
           : undefined);
 
-      // if (accessToken) {
-      //   try {
-      //     const decoded = await jwtHelper.verifyAccessToken<{ jti: string }>(
-      //       accessToken,
-      //     );
-
-      //     if (decoded?.jti) {
-      //       const session = (await sessionService.validateSession(
-      //         decoded.jti,
-      //       )) as ISession;
-      //       if (session?.valid) {
-      //         await sessionService.revokeSession(decoded.jti);
-      //       }
-      //     }
-      //   } catch (err) {
-      //     console.log("Logout token verification skipped or failed:", err);
-      //   }
-      // }
       await this.service.logout(accessToken);
 
       const cookieOptions = {

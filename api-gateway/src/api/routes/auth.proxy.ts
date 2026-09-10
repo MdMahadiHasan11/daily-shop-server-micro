@@ -24,8 +24,13 @@ export class AuthProxyRoute extends BaseProxyRoute {
         // middlewares: [authMiddleware],
       },
       {
-        path: "/api/v1/users/profile",
-        method: "put",
+        path: "/v1/auth/me",
+        method: "get",
+        // middlewares: [authMiddleware],
+      },
+      {
+        path: "/v1/auth/logout",
+        method: "post",
         // middlewares: [authMiddleware],
       },
     ];

@@ -13,28 +13,19 @@ export class UserController extends BaseController {
     this.service = new UserService();
   }
 
-  // createUser = this.asyncHandler(async (req: Request, res: Response) => {
-  //   const metaData = this.getReqMetadata(req) as IMetaData;
-  //   const result = await this.service.createUsers(metaData);
-
-  //   return this.successResponse(
-  //     res,
-  //     { user: result, message: "User create done" },
-  //     200,
-  //   );
-  // });
-
   getAllUser = this.asyncHandler(async (req: Request, res: Response) => {
-    const metaData = this.getReqMetadata(req) as IMetaData;
     const query = req.validatedBody.query as UserListQuery["query"];
     const result = await this.service.getAllUsers(query);
-    return this.successResponse(res, { user: result, metaData }, 200);
+    return this.successResponse(res, result.data, 200, {
+      pagination: result.pagination,
+      query,
+    });
   });
 
   getMe = this.asyncHandler(async (req: Request, res: Response) => {
     const metaData = this.getReqMetadata(req) as IMetaData;
 
-    if (!metaData.authId) {
+    if (!metaData.id) {
       throw new AppError(
         "Cannot fetch user profile. Auth ID is missing in request headers.",
         400,
@@ -48,7 +39,7 @@ export class UserController extends BaseController {
     const includeLocation =
       includeQuery === "location" || includeQuery === "locations";
     const result = await this.service.getUserDetails(
-      metaData.authId,
+      metaData.id,
       includeLocation,
     );
 
@@ -59,7 +50,7 @@ export class UserController extends BaseController {
     const metaData = this.getReqMetadata(req) as IMetaData;
     const updateData = req.body;
 
-    if (!metaData.authId) {
+    if (!metaData.id) {
       throw new AppError(
         "Cannot fetch user profile. Auth ID is missing in request headers.",
         400,
@@ -69,7 +60,7 @@ export class UserController extends BaseController {
       );
     }
     const result = await this.service.updateFullProfile(
-      metaData.authId,
+      metaData.id,
       updateData,
     );
     return this.successResponse(res, result, 200, {

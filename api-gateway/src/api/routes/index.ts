@@ -7,7 +7,7 @@ const gatewayRouter = Router();
 const userProxy = new UserProxyRoute();
 const authProxy = new AuthProxyRoute();
 
-// gatewayRouter.use(userProxy.router);
+gatewayRouter.use(userProxy.router);
 gatewayRouter.use(authProxy.router);
 
 export default gatewayRouter;

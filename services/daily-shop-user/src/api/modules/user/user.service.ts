@@ -17,7 +17,7 @@ export class UserService extends BaseService {
 
   async createUsers(metaData: IMetaData): Promise<UserProfileMaster> {
     try {
-      if (!metaData.authId) {
+      if (!metaData.id) {
         throw new AppError(
           "Auth ID is missing in request headers. Cannot create user profile.",
           400,

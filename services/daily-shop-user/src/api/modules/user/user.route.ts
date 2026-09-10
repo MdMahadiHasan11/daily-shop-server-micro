@@ -17,13 +17,14 @@ export class UserRoutes extends BaseRoutes<UserController> {
     // admin
     this.router.get(
       "/",
+      this.validateService.allow(["gateway"]),
       this.validateRequest(UserValidators.listUsers),
       this.controller.getAllUser,
     );
 
     this.router.get(
       "/me",
-      this.validateService.allow(["gateway", "auth"]),
+      this.validateService.allow(["gateway"]),
       this.validateRequest(UserValidators.getMeSchema),
       this.controller.getMe,
     );

@@ -145,11 +145,11 @@ export class AuthService extends BaseService {
 
   async getMe(metaData: IMetaData): Promise<any> {
     try {
-      if (!metaData?.userId) {
+      if (!metaData?.id) {
         throw new AppError("Unauthorized user request", 401);
       }
 
-      const cacheKey = CACHE_KEYS.userProfile(metaData?.userId);
+      const cacheKey = CACHE_KEYS.userProfile(metaData?.id);
       const cachedUser = await this.cache.get(cacheKey);
 
       if (cachedUser) {
@@ -158,9 +158,7 @@ export class AuthService extends BaseService {
           : cachedUser;
       }
 
-      const authUser = await this.repository.getUserByIdentity(
-        metaData?.userId,
-      );
+      const authUser = await this.repository.getUserByIdentity(metaData?.id);
       if (!authUser) {
         throw new AppError("User profile not found", 404);
       }
@@ -191,7 +189,7 @@ export class AuthService extends BaseService {
         );
       }
 
-      this._handleError(error, "getMe", { userId: metaData?.userId });
+      this._handleError(error, "getMe", { userId: metaData?.id });
       const errorDetails = error instanceof Error ? error.stack : error;
       throw new AppError(
         "Internal Server Error",

@@ -13,22 +13,20 @@ export class UserProxyRoute extends BaseProxyRoute {
     // const authMiddleware = middlewares.auth;
 
     const routes: RouteDefinition[] = [
-      // 🌐 Public Endpoints
       {
-        path: "/api/v1/users/public-profile/:id",
+        path: "/v1/user",
         method: "get",
         middlewares: [],
       },
 
-      // 🔒 Protected Endpoints
       {
-        path: "/api/v1/users/profile",
+        path: "/v1/user/me",
         method: "get",
         // middlewares: [authMiddleware],
       },
       {
-        path: "/api/v1/users/profile",
-        method: "put",
+        path: "/v1/user/profile",
+        method: "patch",
         // middlewares: [authMiddleware],
       },
     ];

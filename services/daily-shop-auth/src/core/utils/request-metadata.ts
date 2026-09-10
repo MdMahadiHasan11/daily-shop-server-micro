@@ -2,9 +2,9 @@ import { Request } from "express";
 import { IUser } from "../../types/global";
 
 export interface IMetaData {
-  userId: string;
+  id: string;
   email: string | null;
-  phoneNumber: string | null;
+  phone: string | null;
   jti: string | null;
   role: string;
   ipAddress: string;
@@ -17,18 +17,22 @@ export interface IMetaData {
 
 export function getRequestMetadata(req: Request): IMetaData {
   const user = (req as any).user as IUser;
+  const ipAddress =
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+    req.ip ||
+    (req.socket?.remoteAddress as string);
 
   return {
-    userId: user?.userId,
+    id: user?.id,
     email: user?.email,
-    phoneNumber: user?.phoneNumber,
+    phone: user?.phone,
     jti: user?.jti,
     role: user?.role,
 
-    ipAddress: req.ip || (req.socket?.remoteAddress as string),
+    ipAddress,
     userAgent: req.headers["user-agent"] as string,
-    origin: req.headers["origin"],
-    referrer: req.headers["referer"],
+    origin: req.headers["origin"] as string,
+    referrer: req.headers["referer"] as string,
     requestId: req.headers["x-request-id"] as string,
   };
 }

@@ -3,10 +3,10 @@ import { UserRole } from "@prisma/client";
 import { z } from "zod";
 
 export interface IUser {
-  userId: string;
+  id: string;
   role: UserRole;
   email: string | null;
-  phoneNumber: string | null;
+  phone: string | null;
   jti: string | null;
 }
 

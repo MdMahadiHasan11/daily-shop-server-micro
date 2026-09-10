@@ -4,8 +4,6 @@ import { env } from "../config/env.config";
 import { AppError } from "../errors/errors";
 import { IMetaData } from "../utils/request-metadata";
 
- 
-
 const getServiceUrl = (serviceName: string): string => {
   const urls: Record<string, string> = {
     user: env.USER_SERVICE_URL || "http://localhost:5011/v1",
@@ -31,15 +29,18 @@ const extractMetadataHeaders = (
   for (const [key, value] of Object.entries(meta)) {
     if (value !== undefined && value !== null) {
       let headerKey: string;
-      if (["userId", "email", "phoneNumber", "jti", "role"].includes(key)) {
-        const formattedKey = key === "userId" ? "user-id" : key.toLowerCase();
-        headerKey = `x-auth-${formattedKey}`;
+
+      if (["id", "email", "phone", "jti", "role"].includes(key)) {
+        headerKey = `x-user-${key.toLowerCase()}`;
+      } else if (key === "ipAddress") {
+        headerKey = "x-forwarded-for";
       } else {
         const kebabKey = key
           .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
           .toLowerCase();
         headerKey = `x-${kebabKey}`;
       }
+
       headers[headerKey] = String(value);
     }
   }
@@ -51,7 +52,7 @@ const createRequestConfig = (
   config?: AxiosRequestConfig,
 ): AxiosRequestConfig => {
   const headers: Record<string, string> = {
-    "x-internal-secret": env.AUTH_INTERNAL_SECRET,
+    "x-auth-secret": env.AUTH_INTERNAL_SECRET,
     ...extractMetadataHeaders(meta),
     ...(config?.headers as Record<string, string>),
   };

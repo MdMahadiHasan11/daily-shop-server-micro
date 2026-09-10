@@ -49,9 +49,9 @@ export async function bootstrapListeners(): Promise<void> {
         }
 
         const metaData: IMetaData = {
-          authId: authId,
+          id: authId,
           email: email || null,
-          phoneNumber: phoneNumber || null,
+          phone: phoneNumber || null,
         };
         const userService = new UserService();
         await userService.createUsers(metaData);
