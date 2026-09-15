@@ -24,7 +24,7 @@ export class UserRoutes extends BaseRoutes<UserController> {
 
     this.router.get(
       "/me",
-      this.validateService.allow(["gateway"]),
+      this.validateService.allow(["gateway","auth"]),
       this.validateRequest(UserValidators.getMeSchema),
       this.controller.getMe,
     );

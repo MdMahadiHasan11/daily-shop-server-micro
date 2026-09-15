@@ -1,6 +1,7 @@
 // import { PermissionAction, UserTypeEnum } from "@prisma/client";
 import { Router } from "express";
 import { authenticate } from "../../api/middlewares/authentication.middleware";
+import { validateServiceMiddleware } from "../../api/middlewares/validate.service";
 import { validate } from "../../api/middlewares/validation.middleware";
 import { BaseController } from "./base.controller";
 // import { authorize } from "../../api/middlewares/authorization.middleware";
@@ -11,6 +12,7 @@ export abstract class BaseRoutes<T extends BaseController> {
   protected router: Router;
   protected controller: T;
   protected authenticate = authenticate;
+  protected validateService = validateServiceMiddleware;
   // protected authorize = authorize;
   // protected moduleKey = ModuleKey;
   // protected action = PermissionAction;

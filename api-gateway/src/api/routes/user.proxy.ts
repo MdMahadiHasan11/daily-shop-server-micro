@@ -1,4 +1,5 @@
 import { env } from "../../config/gateway.config";
+import { middlewares } from "../middlewares/auth.middleware";
 import { BaseProxyRoute, RouteDefinition } from "../middlewares/base.proxy";
 
 export class UserProxyRoute extends BaseProxyRoute {
@@ -10,7 +11,7 @@ export class UserProxyRoute extends BaseProxyRoute {
   }
 
   private initializeRoutes() {
-    // const authMiddleware = middlewares.auth;
+    const authMiddleware = middlewares.auth;
 
     const routes: RouteDefinition[] = [
       {
@@ -22,7 +23,7 @@ export class UserProxyRoute extends BaseProxyRoute {
       {
         path: "/v1/user/me",
         method: "get",
-        // middlewares: [authMiddleware],
+        middlewares: [authMiddleware],
       },
       {
         path: "/v1/user/profile",

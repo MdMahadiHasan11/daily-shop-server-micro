@@ -31,9 +31,12 @@ export abstract class BaseProxyRoute {
   private createHandler(path: string, method: HttpMethod): RequestHandler {
     return async (req: Request, res: Response, next: NextFunction) => {
       try {
-        let targetUrl = req.baseUrl
+        let rawTargetUrl = req.baseUrl
           ? req.originalUrl.replace(req.baseUrl, "")
           : req.originalUrl;
+
+        // FIXED: Strip out any query parameters from originalUrl so Axios can handle params safely
+        let targetUrl = rawTargetUrl.split("?")[0];
 
         if (!targetUrl || targetUrl === "") {
           targetUrl = path;

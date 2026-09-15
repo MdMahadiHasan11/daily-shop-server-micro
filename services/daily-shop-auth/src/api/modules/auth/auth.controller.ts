@@ -112,6 +112,11 @@ export class AuthController extends BaseController {
     return this.successResponse(res, user, 200);
   });
 
+  verifyToken = this.asyncHandler(async (req: Request, res: Response) => {
+    const result = await this.validateToken(req);
+    return this.successResponse(res, result, 200);
+  });
+
   logout = this.asyncHandler(async (req: Request, res: Response) => {
     try {
       const accessToken =

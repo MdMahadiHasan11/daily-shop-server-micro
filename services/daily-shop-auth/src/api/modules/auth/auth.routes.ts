@@ -23,6 +23,11 @@ export class AuthRoutes extends BaseRoutes<AuthController> {
     );
 
     this.router.post("/logout", this.controller.logout);
+    this.router.post(
+      "/verify-token",
+      this.validateService.allow(["gateway"]),
+      this.controller.verifyToken,
+    );
     this.router.use(authenticate);
     this.router.get("/me", this.controller.getMe);
   }

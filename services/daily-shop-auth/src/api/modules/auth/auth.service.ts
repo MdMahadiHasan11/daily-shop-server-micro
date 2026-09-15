@@ -150,6 +150,7 @@ export class AuthService extends BaseService {
       }
 
       const cacheKey = CACHE_KEYS.userProfile(metaData?.id);
+
       const cachedUser = await this.cache.get(cacheKey);
 
       if (cachedUser) {
@@ -214,6 +215,8 @@ export class AuthService extends BaseService {
         const session = (await sessionService.validateSession(
           decoded.jti,
         )) as ISession;
+        const cacheKey = CACHE_KEYS.userProfile(session.id);
+        await this.cache.delete(cacheKey);
 
         await this.repository.updateUserSessionStatusByToken(decoded.jti);
 

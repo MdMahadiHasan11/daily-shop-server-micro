@@ -63,6 +63,7 @@ export const env = cleanEnv(process.env, {
   AUTH_INTERNAL_SECRET: str(),
 
   USER_SERVICE_URL: str(),
+  GATEWAY_SECRET: str(),
 });
 
 export type Env = typeof env;
