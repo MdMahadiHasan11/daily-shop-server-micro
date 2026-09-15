@@ -32,6 +32,7 @@ export const env = cleanEnv(process.env, {
 
   // secret
   GATEWAY_SECRET: str(),
+  JWT_PUBLIC_KEY: str(),
 });
 
 export type Env = typeof env;

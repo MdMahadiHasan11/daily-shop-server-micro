@@ -5,6 +5,7 @@ import { AppError } from "../errors/errors";
 
 export class JwtHelper {
   private accessSecret = env.JWT_ACCESS_SECRET || env.JWT_SECRET;
+  private accessPrivatekey = env.JWT_PRIVATE_KEY;
   private refreshSecret = env.JWT_REFRESH_SECRET || env.JWT_SECRET;
 
   // generateToken = (payload: any, options?: jwt.SignOptions): string => {
@@ -26,7 +27,8 @@ export class JwtHelper {
 
   verifyAccessToken = <T extends object = any>(token: string): T => {
     try {
-      return jwt.verify(token, this.accessSecret) as T;
+      // return jwt.verify(token, this.accessSecret) as T;
+      return jwt.verify(token, this.accessPrivatekey) as T;
     } catch (err: any) {
       if (err.name === "TokenExpiredError") {
         throw new AppError(
@@ -157,9 +159,13 @@ export class JwtHelper {
 
   generateAccessAndRefresh(payload: object) {
     const jti = cuid();
-    const accessToken = jwt.sign({ ...payload, jti }, this.accessSecret, {
+    // const accessToken = jwt.sign({ ...payload, jti }, this.accessSecret, {
+    //   expiresIn: env.JWT_ACCESS_EXPIRATION as any,
+    // });
+    const accessToken = jwt.sign({ ...payload, jti }, this.accessPrivatekey, {
       expiresIn: env.JWT_ACCESS_EXPIRATION as any,
     });
+
     const refreshToken = jwt.sign(
       { jti, type: "refresh" },
       this.refreshSecret,

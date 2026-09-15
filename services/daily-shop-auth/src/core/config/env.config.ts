@@ -50,6 +50,7 @@ export const env = cleanEnv(process.env, {
   JWT_EXPIRATION: str({ default: "7d" }),
   JWT_ACCESS_EXPIRATION: str({ default: "7d" }),
   JWT_REFRESH_EXPIRATION: str({ default: "30d" }),
+  JWT_PRIVATE_KEY: str(),
 
   OTP_TTL_SECONDS: num({ default: 30 }),
   SESSION_TTL_SECONDS: num({ default: 604800 }),

@@ -17,7 +17,7 @@ export class UserProxyRoute extends BaseProxyRoute {
       {
         path: "/v1/user",
         method: "get",
-        middlewares: [],
+        middlewares: [authMiddleware],
       },
 
       {
@@ -28,7 +28,7 @@ export class UserProxyRoute extends BaseProxyRoute {
       {
         path: "/v1/user/profile",
         method: "patch",
-        // middlewares: [authMiddleware],
+        middlewares: [authMiddleware],
       },
     ];
 

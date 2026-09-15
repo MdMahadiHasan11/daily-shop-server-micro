@@ -1,8 +1,9 @@
 import axios from "axios";
 import { NextFunction, Request, Response } from "express";
+import jwt from "jsonwebtoken";
 import { env } from "../../config/gateway.config";
 
-const verifyAuthToken = async (
+const verifyRemoteAuth = async (
   req: Request,
   res: Response,
   next: NextFunction,
@@ -34,11 +35,10 @@ const verifyAuthToken = async (
           "x-gateway-secret": env.GATEWAY_SECRET,
         },
         timeout: 5000,
-        validateStatus: () => true, // Prevents axios from throwing on 4xx/5xx status codes
+        validateStatus: () => true,
       },
     );
 
-    // Handle Auth Service explicit rejections (Invalid/expired token)
     if (authResponse.status !== 200 || !authResponse.data.success) {
       return res.status(401).json({
         success: false,
@@ -50,7 +50,6 @@ const verifyAuthToken = async (
 
     const userData = authResponse.data.user || authResponse.data.data;
 
-    // Inject user info into headers for downstream microservices
     req.headers["x-user-id"] = userData.id || "";
     req.headers["x-user-email"] = userData.email || "";
     req.headers["x-user-role"] = userData.role || "";
@@ -58,9 +57,8 @@ const verifyAuthToken = async (
 
     next();
   } catch (error: any) {
-    console.error("🔥 Gateway Auth Middleware Error:", error.message);
+    console.error("🔥 Gateway Remote Auth Error:", error.message);
 
-    // Check if it's an Axios network error (Auth service offline, refused, or timed out)
     if (axios.isAxiosError(error)) {
       if (
         error.code === "ECONNREFUSED" ||
@@ -74,7 +72,6 @@ const verifyAuthToken = async (
       }
     }
 
-    // Fallback general error
     return res.status(500).json({
       success: false,
       message: "Internal Gateway Error during token verification",
@@ -82,6 +79,85 @@ const verifyAuthToken = async (
   }
 };
 
+const verifyLocalAuth = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const cookieToken = req.cookies?.accessToken;
+    const authHeader = req.headers.authorization;
+
+    const token =
+      cookieToken ||
+      (authHeader?.startsWith("Bearer ")
+        ? authHeader.split(" ")[1]
+        : undefined);
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication token required",
+      });
+    }
+
+    const publicKey = env.JWT_PUBLIC_KEY?.replace(/\\n/g, "\n");
+
+    if (!publicKey) {
+      console.error("🔥 JWT_PUBLIC_KEY is missing in gateway environment");
+      return res.status(500).json({
+        success: false,
+        message: "Internal Gateway Configuration Error",
+      });
+    }
+
+    const decoded: any = jwt.verify(token, publicKey, {
+      algorithms: ["RS256"],
+    });
+
+    const userId = decoded.id || decoded.userId || decoded.sub || "";
+    const userEmail = decoded.email || "";
+    const userRole = decoded.role || "";
+    const userPhone = decoded.phone || "";
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - Invalid token payload",
+      });
+    }
+
+    req.headers["x-user-id"] = userId;
+    req.headers["x-user-email"] = userEmail;
+    req.headers["x-user-role"] = userRole;
+    req.headers["x-user-phone"] = userPhone;
+
+    next();
+  } catch (error: any) {
+    console.error("🔥 Gateway Local Auth Error:", error.message);
+
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - Token has expired",
+      });
+    }
+
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - Invalid token signature",
+      });
+    }
+
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized - Token verification failed",
+    });
+  }
+};
+
 export const middlewares = {
-  auth: verifyAuthToken,
+  auth: verifyRemoteAuth,
+  localAuth: verifyLocalAuth,
 };

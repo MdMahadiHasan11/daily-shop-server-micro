@@ -1,5 +1,4 @@
 import { env } from "../../config/gateway.config";
-import { middlewares } from "../middlewares/auth.middleware";
 import { BaseProxyRoute, RouteDefinition } from "../middlewares/base.proxy";
 
 export class AuthProxyRoute extends BaseProxyRoute {
@@ -11,8 +10,6 @@ export class AuthProxyRoute extends BaseProxyRoute {
   }
 
   private initializeRoutes() {
-    const authMiddleware = middlewares.auth;
-
     const routes: RouteDefinition[] = [
       {
         path: "/v1/auth/login-register-initiate",
@@ -27,7 +24,6 @@ export class AuthProxyRoute extends BaseProxyRoute {
       {
         path: "/v1/auth/me",
         method: "get",
-        middlewares: [authMiddleware],
       },
       {
         path: "/v1/auth/logout",
