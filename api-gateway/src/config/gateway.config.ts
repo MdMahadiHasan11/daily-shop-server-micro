@@ -3,7 +3,7 @@ import { cleanEnv, num, str } from "envalid";
 import fs from "fs";
 import path from "path";
 import { logger } from "../utils/logger.utils";
-
+dotenv.config();
 const nodeEnv = process.env.NODE_ENV || "development";
 const envFileName = `.env.${nodeEnv}`;
 const envPath = path.join(process.cwd(), envFileName);
