@@ -1,4 +1,3 @@
-import { CartExpirationListener } from "../api/modules/cart/cart.listener";
 import { eventBus } from "../core/services/event-bus-rabit.service";
 import { redisSubscriberService } from "../core/services/redis-subscriber.service";
 import { logger } from "../core/utils/logger.utils";
@@ -13,8 +12,6 @@ interface LoginInitiate {
 }
 
 export async function bootstrapListeners(): Promise<void> {
-  CartExpirationListener.register();
-
   // here redis expired service
   // 2. Register OTP Expiration Event Handler
   redisSubscriberService.onKeyExpired("otp", (fullKey, keyParts) => {

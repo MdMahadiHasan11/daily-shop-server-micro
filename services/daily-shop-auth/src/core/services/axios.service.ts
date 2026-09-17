@@ -6,10 +6,8 @@ import { IMetaData } from "../utils/request-metadata";
 
 const getServiceUrl = (serviceName: string): string => {
   const urls: Record<string, string> = {
-    user: env.USER_SERVICE_URL || "http://localhost:5011/v1",
-    // auth: process.env.AUTH_SERVICE_URL || "http://localhost:5000/v1",
+    user: `${env.USER_SERVICE_URL || "http://localhost:5011"}/v1/user`,
   };
-
   const url = urls[serviceName.toLowerCase()];
   if (!url) {
     throw new AppError(

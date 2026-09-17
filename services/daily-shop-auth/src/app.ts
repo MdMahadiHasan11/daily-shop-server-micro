@@ -43,8 +43,6 @@ app.get("/health", async (_req, res) => {
 
 app.use("/v1/auth", router);
 
-// Global Error Handler
-
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
 

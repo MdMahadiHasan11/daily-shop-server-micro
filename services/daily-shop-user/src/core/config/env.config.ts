@@ -40,7 +40,6 @@ export const env = cleanEnv(process.env, {
   ALLOWED_ORIGINS: str(),
   REDIS_URL: str(),
 
-  INVENTORY_SERVICE_URL: str(),
   QUEUE_URL: url({ default: "" }),
 
   // Authentication
