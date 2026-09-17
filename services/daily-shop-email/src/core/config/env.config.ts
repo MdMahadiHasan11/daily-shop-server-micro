@@ -35,11 +35,19 @@ export const env = cleanEnv(process.env, {
     choices: ["development", "test", "staging", "production"],
     default: "development",
   }),
+
+  SMTP_PASS: str(),
+  SMTP_EMAIL: str(),
   DATABASE_URL: str(),
   PORT: num({ default: 5050 }),
   ALLOWED_ORIGINS: str(),
   REDIS_URL: str(),
   QUEUE_URL: url({ default: "" }),
+  TWILIO_ACCOUNT_SID: str(),
+  TWILIO_AUTH_TOKEN: str(),
+  TWILIO_PHONE_NUMBER: str(),
+  TELEGRAM_BOT_TOKEN: str(),
+  TELEGRAM_CHAT_ID: str(),
 });
 
 export type Env = typeof env;

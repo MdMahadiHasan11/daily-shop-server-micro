@@ -1,5 +1,6 @@
 import compression from "compression";
 import cookieParser from "cookie-parser";
+import "dotenv/config";
 import express from "express";
 import morgan from "morgan";
 import { globalErrorHandler } from "./api/middlewares/globalErrorHandler";

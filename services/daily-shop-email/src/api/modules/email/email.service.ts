@@ -1,8 +1,11 @@
 import { EmailTemplate } from "@prisma/client";
-// import nodemailer from "nodemailer";
 import { PaginationResult } from "../../../common/interfaces";
+
 import { BaseService } from "../../../core/base/base.service";
 import { AppError } from "../../../core/errors/errors";
+
+import { env } from "../../../core/config/env.config";
+import { emailSender } from "../../utils/email-sender.util";
 import { EmailRepository } from "./email.repository";
 import {
   CreateTemplateDto,
@@ -15,28 +18,23 @@ export interface SendEmailPayload {
   to: string;
   templateName: string;
   payload: Record<string, any>;
+  attachmentHtml?: string;
+  pdfFilename?: string;
 }
 
 export class EmailService extends BaseService {
   private readonly repository: EmailRepository;
-  // private transporter: nodemailer.Transporter;
 
   constructor() {
     super();
     this.repository = new EmailRepository();
     this.serviceName = "EmailService";
-
-    // this.transporter = nodemailer.createTransport({
-    //   host: process.env.SMTP_HOST || "smtp.mailtrap.io",
-    //   port: Number(process.env.SMTP_PORT) || 2525,
-    //   auth: {
-    //     user: process.env.SMTP_USER || "",
-    //     pass: process.env.SMTP_PASS || "",
-    //   },
-    // });
   }
 
   async sendEmail(options: SendEmailPayload): Promise<boolean> {
+    let templateId: string | null = null;
+    let finalSubject = "";
+
     try {
       const template = await this.repository.getTemplateByName(
         options.templateName,
@@ -51,62 +49,37 @@ export class EmailService extends BaseService {
         );
       }
 
-      let finalSubject = template.subject;
+      templateId = template.id;
+      finalSubject = template.subject;
       let finalHtml = template.htmlBody;
       let finalText = template.textBody || "";
 
-      // Auto extract variables and validate payload
-      const variableRegex = /{{\s*([a-zA-Z0-9_]+)\s*}}/g;
-      const requiredFields = new Set<string>();
-      let match;
-      while (
-        (match = variableRegex.exec(finalHtml + " " + finalSubject)) !== null
-      ) {
-        requiredFields.add(match[1]);
+      finalHtml = emailSender.compileTemplate(finalHtml, options.payload);
+      finalSubject = emailSender.compileTemplate(finalSubject, options.payload);
+      if (finalText) {
+        finalText = emailSender.compileTemplate(finalText, options.payload);
       }
 
-      const missingFields: string[] = [];
-      for (const field of requiredFields) {
-        if (
-          !options.payload ||
-          options.payload[field] === undefined ||
-          options.payload[field] === null
-        ) {
-          missingFields.push(field);
-        }
-      }
-
-      if (missingFields.length > 0) {
-        throw new AppError(
-          `Missing required template fields: [ ${missingFields.join(", ")} ]`,
-          400,
-          true,
-          undefined,
-          "MISSING_TEMPLATE_FIELDS",
+      const attachments: any[] = [];
+      if (options.attachmentHtml) {
+        const pdfBuffer = await emailSender.generatePdfFromHtml(
+          options.attachmentHtml,
         );
+        attachments.push({
+          filename: options.pdfFilename || `${options.templateName}.pdf`,
+          content: pdfBuffer,
+        });
       }
 
-      // Replace placeholders
-      for (const [key, value] of Object.entries(options.payload)) {
-        const regex = new RegExp(`{{\\s*${key}\\s*}}`, "g");
-        const safeValue = String(value);
-        finalSubject = finalSubject.replace(regex, safeValue);
-        finalHtml = finalHtml.replace(regex, safeValue);
-        if (finalText) finalText = finalText.replace(regex, safeValue);
-      }
+      await emailSender.sendMail({
+        from: `Daily Shop <${env.SMTP_EMAIL}>`,
+        to: options.to,
+        subject: finalSubject,
+        html: finalHtml,
+        text: finalText || undefined,
+        attachments,
+      });
 
-      // Send mail via Nodemailer
-      // await this.transporter.sendMail({
-      //   from: process.env.EMAIL_FROM || '"App Support" <no-reply@app.com>',
-      //   to: options.to,
-      //   subject: finalSubject,
-      //   html: finalHtml,
-      //   text: finalText || undefined,
-      // });
-
-      console.log("----------------here phone service-------------");
-
-      // Save success log
       await this.repository.createLog({
         recipient: options.to,
         subject: finalSubject,
@@ -121,7 +94,9 @@ export class EmailService extends BaseService {
         subject: options.templateName,
         status: "FAILED",
         error: error.message || "Unknown error",
+        templateId: templateId || "unknown",
       });
+
       this._handleError(error, "sendEmail", { options });
       return false;
     }

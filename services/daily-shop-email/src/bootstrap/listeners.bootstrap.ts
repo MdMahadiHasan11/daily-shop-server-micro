@@ -49,6 +49,7 @@ export async function bootstrapListeners(): Promise<void> {
             templateName: "OTP_VERIFICATION_SMS",
             payload: templatePayload,
           });
+          
           logger.info(
             { phone, otp },
             "Login OTP SMS sent successfully via event 📱",

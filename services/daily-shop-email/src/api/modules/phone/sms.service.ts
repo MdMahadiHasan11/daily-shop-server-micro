@@ -2,6 +2,7 @@ import { SmsTemplate } from "@prisma/client";
 import { PaginationResult } from "../../../common/interfaces";
 import { BaseService } from "../../../core/base/base.service";
 import { AppError } from "../../../core/errors/errors";
+import { smsSender } from "../../utils/sms-sender.util";
 import { SmsRepository } from "./sms.repository";
 import {
   CreateSmsTemplateDto,
@@ -78,10 +79,7 @@ export class SmsService extends BaseService {
         finalBody = finalBody.replace(regex, safeValue);
       }
 
-      // TODO: Integrate actual SMS Provider API call here (e.g., Twilio, Greenweb, etc.)
-
-      console.log("---------------here phone sms service-----------------");
-      // await smsProviderClient.send({ to: options.to, message: finalBody });
+      await smsSender.sendSms(options.to, finalBody);
 
       // Save success log
       await this.repository.createLog({
