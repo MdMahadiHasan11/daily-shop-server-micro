@@ -14,6 +14,7 @@ import db from "./core/lib/prisma";
 import { responseUtil } from "./core/utils/response.util";
 
 const app = express();
+app.set("trust proxy", 1);
 app.use(trackMetrics);
 
 app.use(compression());

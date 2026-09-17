@@ -29,10 +29,12 @@ export class UserValidators extends BaseValidator {
       profile: z
         .object({
           firstName: z.string().min(1).optional(),
-          lastName: z.string().min(1).optional(),
+
+          lastName: z.string().optional().or(z.literal("")).nullable(),
           gender: z.nativeEnum(Gender).optional(),
-          dateOfBirth: z.string().datetime().optional(),
-          bio: z.string().optional(),
+          dateOfBirth: z.string().datetime().optional().nullable(),
+
+          bio: z.string().optional().or(z.literal("")).nullable(),
         })
         .optional(),
       addresses: z

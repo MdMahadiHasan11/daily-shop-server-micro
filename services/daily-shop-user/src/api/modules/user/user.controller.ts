@@ -47,8 +47,11 @@ export class UserController extends BaseController {
   });
 
   updateProfile = this.asyncHandler(async (req: Request, res: Response) => {
+    console.log("ssssssssssssssssssssssssssssssssssssssssssss");
     const metaData = this.getReqMetadata(req) as IMetaData;
-    const updateData = req.body;
+    const updateData = req.validatedBody?.body;
+
+    console.log(updateData, "ssssssssssssssssssssssssssssssssssssssssssss");
 
     if (!metaData.id) {
       throw new AppError(
