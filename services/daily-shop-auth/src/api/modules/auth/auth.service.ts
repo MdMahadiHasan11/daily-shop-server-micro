@@ -207,16 +207,30 @@ export class AuthService extends BaseService {
         return;
       }
 
-      const decoded = await jwtHelper.verifyAccessToken<{ jti: string }>(
-        accessToken,
-      );
+      const decoded = await jwtHelper.verifyAccessToken<{
+        jti: string;
+        exp?: number;
+      }>(accessToken);
 
       if (decoded?.jti) {
+        if (decoded.exp) {
+          const expiresInSeconds = decoded.exp - Math.floor(Date.now() / 1000);
+          if (expiresInSeconds > 0) {
+            this.cache.set(decoded.jti, "revoked", {
+              ttl: expiresInSeconds,
+              namespace: "blacklist",
+            });
+          }
+        }
+
         const session = (await sessionService.validateSession(
           decoded.jti,
         )) as ISession;
-        const cacheKey = CACHE_KEYS.userProfile(session.id);
-        await this.cache.delete(cacheKey);
+
+        if (session && session.id) {
+          const cacheKey = CACHE_KEYS.userProfile(session.id);
+          await this.cache.delete(cacheKey);
+        }
 
         await this.repository.updateUserSessionStatusByToken(decoded.jti);
 

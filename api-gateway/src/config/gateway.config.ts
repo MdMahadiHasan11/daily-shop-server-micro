@@ -25,6 +25,7 @@ export const env = cleanEnv(process.env, {
   }),
   PORT: num({ default: 5000 }),
   ALLOWED_ORIGINS: str(),
+  REDIS_URL: str(),
 
   AUTH_SERVICE: str(),
   USER_SERVICE: str(),

@@ -2,7 +2,12 @@ import axios from "axios";
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/gateway.config";
+import { redisService } from "../../core/services/redis.service";
 
+/**
+ * Legacy/Remote Authentication Middleware
+ * Validates the token by making an HTTP call to the Auth Service.
+ */
 const verifyRemoteAuth = async (
   req: Request,
   res: Response,
@@ -79,6 +84,10 @@ const verifyRemoteAuth = async (
   }
 };
 
+/**
+ * High-Performance Local Asymmetric (RS256) + Redis Blacklist Authentication Middleware
+ * Verifies the JWT signature locally using the Public Key and checks Redis for revocation (Logout).
+ */
 const verifyLocalAuth = async (
   req: Request,
   res: Response,
@@ -111,11 +120,41 @@ const verifyLocalAuth = async (
       });
     }
 
+    // 1. Verify token locally using RS256 algorithm and Public Key
     const decoded: any = jwt.verify(token, publicKey, {
       algorithms: ["RS256"],
     });
 
-    const userId = decoded.id || decoded.userId || decoded.sub || "";
+    const jti = decoded.jti;
+
+    // 2. Check Redis for Token Blacklisting (Instant Logout Check) with a safety timeout (1.5s)
+    if (jti) {
+      try {
+        const isBlacklisted = await Promise.race([
+          redisService.get(jti, { namespace: "blacklist" }),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Redis operation timeout")),
+              1500,
+            ),
+          ),
+        ]);
+
+        if (isBlacklisted) {
+          return res.status(401).json({
+            success: false,
+            message: "Unauthorized - Token has been revoked (Logged out)",
+          });
+        }
+      } catch (redisError: any) {
+        console.warn(
+          `⚠️ [Gateway] Redis Blacklist check warning: ${redisError.message}`,
+        );
+        // Allows request to proceed if Redis is temporarily unreachable, prioritizing availability
+      }
+    }
+
+    const userId = decoded.id || "";
     const userEmail = decoded.email || "";
     const userRole = decoded.role || "";
     const userPhone = decoded.phone || "";
@@ -127,6 +166,7 @@ const verifyLocalAuth = async (
       });
     }
 
+    // Forward user context downstream via headers
     req.headers["x-user-id"] = userId;
     req.headers["x-user-email"] = userEmail;
     req.headers["x-user-role"] = userRole;

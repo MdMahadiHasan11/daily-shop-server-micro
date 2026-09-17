@@ -9,6 +9,9 @@ build/
 .pnpm/
 
 # Environment variables
+.env
+.env.*
+!.env.example
  
 
 # Logs and OS files

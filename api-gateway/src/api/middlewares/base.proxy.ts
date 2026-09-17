@@ -7,6 +7,7 @@ import {
   Router,
 } from "express";
 import { env } from "../../config/gateway.config";
+import { middlewares } from "./auth.middleware";
 
 type HttpMethod = "get" | "post" | "put" | "delete" | "patch";
 
@@ -19,6 +20,7 @@ export interface RouteDefinition {
 export abstract class BaseProxyRoute {
   public router = Router();
   protected abstract serviceUrl: string;
+  protected middlewares = middlewares;
 
   protected registerRoutes(routes: RouteDefinition[]) {
     routes.forEach((route) => {

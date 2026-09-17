@@ -6,29 +6,14 @@ import { AppError } from "../errors/errors";
 export class JwtHelper {
   private accessSecret = env.JWT_ACCESS_SECRET || env.JWT_SECRET;
   private accessPrivatekey = env.JWT_PRIVATE_KEY;
+  private accessPublickey = env.JWT_PUBLIC_KEY;
   private refreshSecret = env.JWT_REFRESH_SECRET || env.JWT_SECRET;
-
-  // generateToken = (payload: any, options?: jwt.SignOptions): string => {
-  //   if (!this.accessSecret) {
-  //     throw new AppError(
-  //       "JWT access secret is not defined in config",
-  //       500,
-  //       true,
-  //       undefined,
-  //       "JWT_CONFIG_ERROR",
-  //     );
-  //   }
-
-  //   return jwt.sign(payload, this.accessSecret, {
-  //     expiresIn: env.JWT_EXPIRATION,
-  //     ...options,
-  //   } as jwt.SignOptions);
-  // };
 
   verifyAccessToken = <T extends object = any>(token: string): T => {
     try {
-      // return jwt.verify(token, this.accessSecret) as T;
-      return jwt.verify(token, this.accessPrivatekey) as T;
+      return jwt.verify(token, this.accessPublickey, {
+        algorithms: ["RS256"],
+      }) as T;
     } catch (err: any) {
       if (err.name === "TokenExpiredError") {
         throw new AppError(
@@ -163,6 +148,7 @@ export class JwtHelper {
     //   expiresIn: env.JWT_ACCESS_EXPIRATION as any,
     // });
     const accessToken = jwt.sign({ ...payload, jti }, this.accessPrivatekey, {
+      algorithm: "RS256",
       expiresIn: env.JWT_ACCESS_EXPIRATION as any,
     });
 

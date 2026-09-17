@@ -3,7 +3,7 @@ import { cleanEnv, makeValidator, num, str, url } from "envalid";
 import fs from "fs";
 import path from "path";
 import { logger } from "../utils/logger.utils";
-
+dotenv.config();
 // 1. Determine and Load Environment File Dynamically
 const nodeEnv = process.env.NODE_ENV || "development";
 const envFileName = `.env.${nodeEnv}`;

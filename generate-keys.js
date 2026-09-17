@@ -14,7 +14,6 @@ const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
   },
 });
 
-// ফাইল হিসেবে সেভ করা
 fs.writeFileSync("private.key", privateKey);
 fs.writeFileSync("public.key", publicKey);
 
