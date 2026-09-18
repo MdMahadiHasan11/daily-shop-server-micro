@@ -11,5 +11,6 @@ const fileProxy = new FileProxyRoute();
 
 gatewayRouter.use(userProxy.router);
 gatewayRouter.use(authProxy.router);
+gatewayRouter.use(fileProxy.router);
 
 export default gatewayRouter;
