@@ -37,7 +37,6 @@ export abstract class BaseProxyRoute {
           ? req.originalUrl.replace(req.baseUrl, "")
           : req.originalUrl;
 
-        // FIXED: Strip out any query parameters from originalUrl so Axios can handle params safely
         let targetUrl = rawTargetUrl.split("?")[0];
 
         if (!targetUrl || targetUrl === "") {
@@ -76,19 +75,27 @@ export abstract class BaseProxyRoute {
           headers.cookie = req.headers.cookie;
         }
 
+        // ফর্ম ডাটা/ইমেজ আপলোডের জন্য content-type ধরে রাখা অত্যন্ত জরুরি
+        if (req.headers["content-type"]) {
+          headers["content-type"] = req.headers["content-type"];
+        }
+
         delete headers.host;
         delete headers.connection;
         delete headers.dnt;
-        delete headers["content-length"];
+        delete headers["content-length"]; // Axios নিজের মতো করে সঠিক content-length হিসাব করে নেবে
         delete headers["accept-encoding"];
 
         const axiosConfig: AxiosRequestConfig = {
           method,
           url: fullUrl,
-          data: req.body,
+          // GET বা DELETE ছাড়া অন্য মেথডের জন্য (যেমন POST/PUT) ইমেজ বা ফর্ম ডাটা স্ট্রিম হিসেবে সরাসরি req পাস করা হলো
+          data: method === "get" ? undefined : req, 
           params: req.query,
           headers,
-          timeout: 15000,
+          timeout: 30000, // ফাইল আপলোড বড় হতে পারে, তাই সময় বাড়িয়ে দেওয়া হলো
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
           validateStatus: () => true,
         };
 
