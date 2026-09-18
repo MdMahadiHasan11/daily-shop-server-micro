@@ -85,16 +85,16 @@ export abstract class BaseProxyRoute {
         delete headers["content-length"];
         delete headers["accept-encoding"];
 
-        // রিকোয়েস্টের ধরন অনুযায়ী ডেটা সিলেক্ট করা (ফাইল আপলোডের জন্য স্ট্রিম, বাকিগুলোর জন্য বডি)
+        
         const contentType = req.headers["content-type"] || "";
         let requestData;
 
         if (method === "get") {
           requestData = undefined;
         } else if (contentType.includes("multipart/form-data")) {
-          requestData = req; // ফাইল/ইমেজ আপলোডের ক্ষেত্রে সরাসরি স্ট্রিম পাস হবে
+          requestData = req;
         } else {
-          requestData = req.body; // লগইন বা অন্যান্য JSON রিকোয়েস্টের ক্ষেত্রে সাধারণ বডি পাস হবে
+          requestData = req.body;
         }
 
         const axiosConfig: AxiosRequestConfig = {
