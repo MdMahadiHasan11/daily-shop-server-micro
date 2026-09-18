@@ -15,8 +15,10 @@ export class StockLevelService extends BaseService {
   async getAllStockLevels(query: any) {
     try {
       return await this.repository.getList(query, {
-        warehouse: true,
-        productVariant: true,
+        include: {
+          warehouse: true,
+          productVariant: true,
+        },
       });
     } catch (error) {
       this._handleError(error, "getAllStockLevels", { query });
@@ -27,10 +29,8 @@ export class StockLevelService extends BaseService {
   // Get specific stock level by ID
   async getStockLevelById(id: string) {
     try {
-      const stockLevel = await this.repository.findById(id, {
-        warehouse: true,
-        productVariant: true,
-      });
+      const stockLevel = await this.repository.findByIdWithRelations(id);
+
       if (!stockLevel) {
         throw new AppError("Stock level record not found", 404, true, undefined, "STOCK_LEVEL_NOT_FOUND");
       }

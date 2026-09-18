@@ -1,13 +1,22 @@
 import { BaseService } from "../../../core/base/base.service";
 import { AppError } from "../../../core/errors/errors";
 import { PurchaseOrderRepository } from "./purchase-order.repository";
+import { StockLevelRepository } from "../stock-level/stock-level.repository";
+import { StockBatchRepository } from "../stock-batch/stock-batch.repository";
+import { StockTransactionRepository } from "../stock-transaction/stock-transaction.repository";
 
 export class PurchaseOrderService extends BaseService {
   private readonly repository: PurchaseOrderRepository;
+  private readonly stockLevelRepository: StockLevelRepository;
+  private readonly stockBatchRepository: StockBatchRepository;
+  private readonly stockTransactionRepository: StockTransactionRepository;
 
   constructor() {
     super();
     this.repository = new PurchaseOrderRepository();
+    this.stockLevelRepository = new StockLevelRepository();
+    this.stockBatchRepository = new StockBatchRepository();
+    this.stockTransactionRepository = new StockTransactionRepository();
     this.serviceName = "PurchaseOrderService";
   }
 
@@ -15,11 +24,13 @@ export class PurchaseOrderService extends BaseService {
   async getAllPurchaseOrders(query: any) {
     try {
       return await this.repository.getList(query, {
-        supplier: true,
-        warehouse: true,
-        items: {
-          include: {
-            productVariant: true,
+        include: {
+          supplier: true,
+          warehouse: true,
+          items: {
+            include: {
+              productVariant: true,
+            },
           },
         },
       });
@@ -78,11 +89,13 @@ export class PurchaseOrderService extends BaseService {
       };
 
       return await this.repository.create(payload, {
-        supplier: true,
-        warehouse: true,
-        items: {
-          include: {
-            productVariant: true,
+        include: {
+          supplier: true,
+          warehouse: true,
+          items: {
+            include: {
+              productVariant: true,
+            },
           },
         },
       });
@@ -113,11 +126,13 @@ export class PurchaseOrderService extends BaseService {
       if (isDeleted !== undefined) updatePayload.isDeleted = isDeleted;
 
       return await this.repository.update(id, updatePayload, {
-        supplier: true,
-        warehouse: true,
-        items: {
-          include: {
-            productVariant: true,
+        include: {
+          supplier: true,
+          warehouse: true,
+          items: {
+            include: {
+              productVariant: true,
+            },
           },
         },
       });
@@ -127,7 +142,7 @@ export class PurchaseOrderService extends BaseService {
     }
   }
 
-  // Receive goods against a purchase order
+  // Receive goods against a purchase order and update StockLevel, StockBatch & StockTransaction
   async receivePurchaseOrder(id: string, receivedData: { receivedDate?: string; notes?: string }) {
     try {
       const po = await this.repository.findByIdWithRelations(id);
@@ -141,17 +156,65 @@ export class PurchaseOrderService extends BaseService {
         throw new AppError("Cannot receive a cancelled purchase order", 400, true, undefined, "PO_CANCELLED");
       }
 
+      // Loop through each item in the purchase order
+      for (const item of po.items) {
+        const warehouseId = po.warehouseId;
+        const productVariantId = item.productVariantId;
+        const quantityReceived = item.orderedQuantity;
+
+        // 1. Check & Update StockLevel
+        let stockLevel = await this.stockLevelRepository.findByWarehouseAndVariant(warehouseId, productVariantId);
+
+        if (stockLevel) {
+          const newQuantity = stockLevel.quantity + quantityReceived;
+          await this.stockLevelRepository.update(stockLevel.id, { quantity: newQuantity });
+        } else {
+          await this.stockLevelRepository.create({
+            warehouseId,
+            productVariantId,
+            quantity: quantityReceived,
+            reorderLevel: 10,
+            reorderQuantity: 50,
+          });
+        }
+
+        // 2. Create Stock Batch (Lot entry)
+        const batchNumber = `BATCH-${po.poNumber}-${Math.floor(1000 + Math.random() * 9000)}`;
+        await this.stockBatchRepository.create({
+          batchNumber,
+          warehouseId,
+          productVariantId,
+          initialQuantity: quantityReceived,
+          currentQuantity: quantityReceived,
+          purchasePrice: item.unitCost,
+          mfgDate: new Date(),
+          expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 2)),
+        });
+
+        // 3. Create Stock Transaction Record (Matches schema: 'note' instead of 'notes')
+        await this.stockTransactionRepository.create({
+          warehouseId,
+          productVariantId,
+          type: "STOCK_IN",
+          quantity: quantityReceived,
+          referenceId: po.id,
+          note: `Received against PO: ${po.poNumber}`,
+        });
+      }
+
       // Update PO status to RECEIVED
       const updatedPo = await this.repository.update(id, {
         status: "RECEIVED",
         receivedDate: receivedData.receivedDate ? new Date(receivedData.receivedDate) : new Date(),
         notes: receivedData.notes || po.notes,
       }, {
-        supplier: true,
-        warehouse: true,
-        items: {
-          include: {
-            productVariant: true,
+        include: {
+          supplier: true,
+          warehouse: true,
+          items: {
+            include: {
+              productVariant: true,
+            },
           },
         },
       });

@@ -15,11 +15,13 @@ export class StockTransferService extends BaseService {
   async getAllTransfers(query: any) {
     try {
       return await this.repository.getList(query, {
-        fromWarehouse: true,
-        toWarehouse: true,
-        items: {
-          include: {
-            productVariant: true,
+        include: {
+          fromWarehouse: true,
+          toWarehouse: true,
+          items: {
+            include: {
+              productVariant: true,
+            },
           },
         },
       });
@@ -72,11 +74,13 @@ export class StockTransferService extends BaseService {
       };
 
       return await this.repository.create(payload, {
-        fromWarehouse: true,
-        toWarehouse: true,
-        items: {
-          include: {
-            productVariant: true,
+        include: {
+          fromWarehouse: true,
+          toWarehouse: true,
+          items: {
+            include: {
+              productVariant: true,
+            },
           },
         },
       });
@@ -102,11 +106,13 @@ export class StockTransferService extends BaseService {
       if (notes !== undefined) updatePayload.notes = notes;
 
       const updatedTransfer = await this.repository.update(id, updatePayload, {
-        fromWarehouse: true,
-        toWarehouse: true,
-        items: {
-          include: {
-            productVariant: true,
+        include: {
+          fromWarehouse: true,
+          toWarehouse: true,
+          items: {
+            include: {
+              productVariant: true,
+            },
           },
         },
       });
@@ -125,7 +131,8 @@ export class StockTransferService extends BaseService {
       if (!transfer) {
         throw new AppError("Stock transfer not found", 404, true, undefined, "TRANSFER_NOT_FOUND");
       }
-      if (transfer.status === "COMPLETED" && transfer.status === "IN_TRANSIT") {
+      // Fixed condition from && to || so active/completed checks work correctly
+      if (transfer.status === "COMPLETED" || transfer.status === "IN_TRANSIT") {
         throw new AppError("Cannot delete active or completed transfer records", 400, true, undefined, "TRANSFER_ACTIVE_CANNOT_DELETE");
       }
       return await this.repository.hardDelete(id);

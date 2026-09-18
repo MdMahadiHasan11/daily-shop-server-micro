@@ -8,7 +8,7 @@ export class StockLevelRoutes extends BaseRoutes<StockLevelController> {
   }
 
   protected registerRoutes(): void {
-    // Low stock alerts route (Must be declared before dynamic path parameters)
+    
     this.router.get(
       "/alerts/low-stock",
       this.validateService.allow(["gateway"]),

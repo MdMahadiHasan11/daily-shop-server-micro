@@ -14,7 +14,9 @@ export class StockTransactionController extends BaseController {
     const query = req.validatedBody?.query || req.query;
     const result = await this.service.getAllTransactions(query);
     return this.successResponse(res, result.data || result, 200, {
+      message:"All transaction get successfully.s",
       pagination: result.pagination,
+      query
     });
   });
 

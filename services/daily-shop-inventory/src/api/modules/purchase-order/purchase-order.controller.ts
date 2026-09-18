@@ -14,7 +14,9 @@ export class PurchaseOrderController extends BaseController {
     const query = req.validatedBody?.query || req.query;
     const result = await this.service.getAllPurchaseOrders(query);
     return this.successResponse(res, result.data || result, 200, {
+      message:"All purchse order get successfully.",
       pagination: result.pagination,
+      query
     });
   });
 

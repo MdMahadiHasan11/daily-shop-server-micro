@@ -5,11 +5,11 @@ enum ProductStatus {
 }
 
 enum StockTransactionType {
-  STOCK_IN         
-  STOCK_OUT        
-  TRANSFER_IN      
-  TRANSFER_OUT     
-  ADJUSTMENT       
+  STOCK_IN
+  STOCK_OUT
+  TRANSFER_IN
+  TRANSFER_OUT
+  ADJUSTMENT
 }
 
 enum PurchaseOrderStatus {
@@ -63,22 +63,22 @@ model ProductVariant {
 // 2. WAREHOUSE / OUTLET MODEL 
 // ==========================================
 model Warehouse {
-  id          String   @id @default(uuid())
-  name        String   @unique 
-  code        String   @unique 
-  address     String?
-  isMain      Boolean  @default(false)
-  isDeleted   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  name      String   @unique
+  code      String   @unique
+  address   String?
+  isMain    Boolean  @default(false)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  stocks             StockLevel[]
-  stockBatches       StockBatch[]
-  stockTransactions  StockTransaction[]
-  purchaseOrders     PurchaseOrder[]
-  transfersFrom      StockTransfer[]    @relation("TransferFrom")
-  transfersTo        StockTransfer[]    @relation("TransferTo")
+  stocks            StockLevel[]
+  stockBatches      StockBatch[]
+  stockTransactions StockTransaction[]
+  purchaseOrders    PurchaseOrder[]
+  transfersFrom     StockTransfer[]    @relation("TransferFrom")
+  transfersTo       StockTransfer[]    @relation("TransferTo")
 
   @@map("warehouses")
 }
@@ -111,13 +111,15 @@ model StockLevel {
   warehouse        Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   productVariantId String
   productVariant   ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
-  
-  quantity         Int            @default(0) 
-  reservedQuantity Int            @default(0) 
-  reorderLevel     Int            @default(10) 
-  reorderQuantity  Int            @default(50) 
 
-  updatedAt        DateTime       @updatedAt
+  quantity         Int @default(0)
+  reservedQuantity Int @default(0)
+  reorderLevel     Int @default(10)
+  reorderQuantity  Int @default(50)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
 
   @@unique([warehouseId, productVariantId])
   @@index([warehouseId])
@@ -130,21 +132,21 @@ model StockLevel {
 // ==========================================
 model StockBatch {
   id               String         @id @default(uuid())
-  batchNumber      String         @unique 
+  batchNumber      String         @unique
   productVariantId String
   productVariant   ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
   warehouseId      String
   warehouse        Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  
-  initialQuantity  Int           
-  currentQuantity  Int            
-  purchasePrice    Float?         
-  mfgDate          DateTime?      
-  expiryDate       DateTime?      
-  
-  isDeleted        Boolean        @default(false)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+
+  initialQuantity Int
+  currentQuantity Int
+  purchasePrice   Float?
+  mfgDate         DateTime?
+  expiryDate      DateTime?
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([productVariantId])
   @@index([warehouseId])
@@ -156,19 +158,21 @@ model StockBatch {
 // 6. STOCK TRANSACTION / LEDGER 
 // ==========================================
 model StockTransaction {
-  id               String               @id @default(uuid())
+  id               String         @id @default(uuid())
   warehouseId      String
-  warehouse        Warehouse            @relation(fields: [warehouseId], references: [id])
+  warehouse        Warehouse      @relation(fields: [warehouseId], references: [id])
   productVariantId String
-  productVariant   ProductVariant       @relation(fields: [productVariantId], references: [id])
-  
-  type             StockTransactionType
-  quantity         Int                  
-  referenceId      String?              
-  note             String?
-  createdBy        String?              
-  
-  createdAt        DateTime             @default(now())
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
+
+  type        StockTransactionType
+  quantity    Int
+  referenceId String?
+  note        String?
+  createdBy   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
 
   @@index([warehouseId])
   @@index([productVariantId])
@@ -180,23 +184,23 @@ model StockTransaction {
 // 7. PURCHASE ORDER (PO) & ITEMS 
 // ==========================================
 model PurchaseOrder {
-  id           String              @id @default(uuid())
-  poNumber     String              @unique 
-  supplierId   String
-  supplier     Supplier            @relation(fields: [supplierId], references: [id])
-  warehouseId  String
-  warehouse    Warehouse           @relation(fields: [warehouseId], references: [id])
-  
+  id          String    @id @default(uuid())
+  poNumber    String    @unique
+  supplierId  String
+  supplier    Supplier  @relation(fields: [supplierId], references: [id])
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+
   status       PurchaseOrderStatus @default(PENDING)
   totalAmount  Float               @default(0)
   expectedDate DateTime?
   receivedDate DateTime?
   notes        String?
-  
-  items        PurchaseOrderItem[]
-  isDeleted    Boolean             @default(false)
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+
+  items     PurchaseOrderItem[]
+  isDeleted Boolean             @default(false)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
 
   @@map("purchase_orders")
 }
@@ -207,11 +211,14 @@ model PurchaseOrderItem {
   purchaseOrder    PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   productVariantId String
   productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
-  
+
   orderedQuantity  Int
-  receivedQuantity Int            @default(0)
+  receivedQuantity Int      @default(0)
   unitCost         Float
   totalCost        Float
+  isDeleted        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@map("purchase_order_items")
 }
@@ -220,19 +227,20 @@ model PurchaseOrderItem {
 // 8. WAREHOUSE-TO-WAREHOUSE STOCK TRANSFER
 // ==========================================
 model StockTransfer {
-  id              String             @id @default(uuid())
-  transferNumber  String             @unique 
+  id              String    @id @default(uuid())
+  transferNumber  String    @unique
   fromWarehouseId String
-  fromWarehouse   Warehouse          @relation("TransferFrom", fields: [fromWarehouseId], references: [id])
+  fromWarehouse   Warehouse @relation("TransferFrom", fields: [fromWarehouseId], references: [id])
   toWarehouseId   String
-  toWarehouse     Warehouse          @relation("TransferTo", fields: [toWarehouseId], references: [id])
-  
-  status          TransferStatus     @default(PENDING)
-  notes           String?
-  items           StockTransferItem[]
-  
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  toWarehouse     Warehouse @relation("TransferTo", fields: [toWarehouseId], references: [id])
+
+  status TransferStatus      @default(PENDING)
+  notes  String?
+  items  StockTransferItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
 
   @@map("stock_transfers")
 }
@@ -243,8 +251,11 @@ model StockTransferItem {
   transfer         StockTransfer  @relation(fields: [transferId], references: [id], onDelete: Cascade)
   productVariantId String
   productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
-  
-  quantity         Int
+
+  quantity  Int
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("stock_transfer_items")
 }

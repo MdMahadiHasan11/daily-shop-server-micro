@@ -15,8 +15,10 @@ export class StockTransactionService extends BaseService {
   async getAllTransactions(query: any) {
     try {
       return await this.repository.getList(query, {
-        warehouse: true,
-        productVariant: true,
+        include: {
+          warehouse: true,
+          productVariant: true,
+        },
       });
     } catch (error) {
       this._handleError(error, "getAllTransactions", { query });
@@ -42,8 +44,10 @@ export class StockTransactionService extends BaseService {
   async createTransaction(data: any) {
     try {
       return await this.repository.create(data, {
-        warehouse: true,
-        productVariant: true,
+        include: {
+          warehouse: true,
+          productVariant: true,
+        },
       });
     } catch (error) {
       this._handleError(error, "createTransaction", { data });

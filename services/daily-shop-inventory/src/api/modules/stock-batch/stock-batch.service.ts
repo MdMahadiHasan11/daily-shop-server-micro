@@ -15,8 +15,10 @@ export class StockBatchService extends BaseService {
   async getAllBatches(query: any) {
     try {
       return await this.repository.getList(query, {
-        warehouse: true,
-        productVariant: true,
+        include: {
+          warehouse: true,
+          productVariant: true,
+        },
       });
     } catch (error) {
       this._handleError(error, "getAllBatches", { query });
@@ -28,8 +30,10 @@ export class StockBatchService extends BaseService {
   async getBatchById(id: string) {
     try {
       const batch = await this.repository.findById(id, {
-        warehouse: true,
-        productVariant: true,
+        include: {
+          warehouse: true,
+          productVariant: true,
+        },
       });
       if (!batch) {
         throw new AppError("Stock batch not found", 404, true, undefined, "STOCK_BATCH_NOT_FOUND");
@@ -56,8 +60,10 @@ export class StockBatchService extends BaseService {
       }
 
       return await this.repository.create(data, {
-        warehouse: true,
-        productVariant: true,
+        include: {
+          warehouse: true,
+          productVariant: true,
+        },
       });
     } catch (error) {
       this._handleError(error, "createBatch", { data });

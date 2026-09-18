@@ -14,7 +14,9 @@ export class StockBatchController extends BaseController {
     const query = req.validatedBody?.query || req.query;
     const result = await this.service.getAllBatches(query);
     return this.successResponse(res, result.data || result, 200, {
+      message:"All Batches get successfully.",
       pagination: result.pagination,
+      query
     });
   });
 
