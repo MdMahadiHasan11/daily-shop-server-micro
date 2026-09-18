@@ -75,7 +75,6 @@ export abstract class BaseProxyRoute {
           headers.cookie = req.headers.cookie;
         }
 
-        // ফর্ম ডাটা/ইমেজ আপলোডের জন্য content-type ধরে রাখা অত্যন্ত জরুরি
         if (req.headers["content-type"]) {
           headers["content-type"] = req.headers["content-type"];
         }
@@ -83,17 +82,28 @@ export abstract class BaseProxyRoute {
         delete headers.host;
         delete headers.connection;
         delete headers.dnt;
-        delete headers["content-length"]; // Axios নিজের মতো করে সঠিক content-length হিসাব করে নেবে
+        delete headers["content-length"];
         delete headers["accept-encoding"];
+
+        // রিকোয়েস্টের ধরন অনুযায়ী ডেটা সিলেক্ট করা (ফাইল আপলোডের জন্য স্ট্রিম, বাকিগুলোর জন্য বডি)
+        const contentType = req.headers["content-type"] || "";
+        let requestData;
+
+        if (method === "get") {
+          requestData = undefined;
+        } else if (contentType.includes("multipart/form-data")) {
+          requestData = req; // ফাইল/ইমেজ আপলোডের ক্ষেত্রে সরাসরি স্ট্রিম পাস হবে
+        } else {
+          requestData = req.body; // লগইন বা অন্যান্য JSON রিকোয়েস্টের ক্ষেত্রে সাধারণ বডি পাস হবে
+        }
 
         const axiosConfig: AxiosRequestConfig = {
           method,
           url: fullUrl,
-          // GET বা DELETE ছাড়া অন্য মেথডের জন্য (যেমন POST/PUT) ইমেজ বা ফর্ম ডাটা স্ট্রিম হিসেবে সরাসরি req পাস করা হলো
-          data: method === "get" ? undefined : req, 
+          data: requestData,
           params: req.query,
           headers,
-          timeout: 30000, // ফাইল আপলোড বড় হতে পারে, তাই সময় বাড়িয়ে দেওয়া হলো
+          timeout: 30000,
           maxContentLength: Infinity,
           maxBodyLength: Infinity,
           validateStatus: () => true,
