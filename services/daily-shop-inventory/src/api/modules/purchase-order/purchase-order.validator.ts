@@ -82,6 +82,27 @@ export class PurchaseOrderValidators extends BaseValidator {
     }),
   });
 
+  static adjustPurchaseOrder = z.object({
+    body: z.object({
+      notes: z.string().optional().nullable(),
+      items: z
+        .array(
+          z.object({
+            purchaseOrderItemId: z
+              .string()
+              .uuid("Invalid Purchase Order Item ID format"),
+            receivedQuantity: z
+              .number()
+              .int()
+              .nonnegative(
+                "Received quantity must be greater than or equal to 0",
+              ),
+          }),
+        )
+        .min(1, "At least one item is required for adjustment"),
+    }),
+  });
+
   static bulkOperation = z.object({
     body: z.object({
       ids: z

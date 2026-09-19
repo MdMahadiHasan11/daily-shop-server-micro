@@ -47,6 +47,14 @@ export class PurchaseOrderRoutes extends BaseRoutes<PurchaseOrderController> {
       this.controller.receivePurchaseOrder,
     );
 
+    // Adjust already received purchase order items & stock
+    this.router.patch(
+      "/:id/adjust",
+      this.validateService.allow(["gateway"]),
+      this.validateRequest(PurchaseOrderValidators.adjustPurchaseOrder),
+      this.controller.adjustReceivedPurchaseOrder,
+    );
+
     // Update purchase order details
     this.router.patch(
       "/:id",
