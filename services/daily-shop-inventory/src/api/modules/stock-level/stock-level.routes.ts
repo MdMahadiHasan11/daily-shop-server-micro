@@ -8,7 +8,6 @@ export class StockLevelRoutes extends BaseRoutes<StockLevelController> {
   }
 
   protected registerRoutes(): void {
-    
     this.router.get(
       "/alerts/low-stock",
       this.validateService.allow(["gateway"]),
@@ -45,6 +44,12 @@ export class StockLevelRoutes extends BaseRoutes<StockLevelController> {
       this.validateService.allow(["gateway"]),
       this.validateRequest(StockLevelValidators.updateThresholds),
       this.controller.updateStockThresholds,
+    );
+
+    this.router.get(
+      "/stock/:productVariantId",
+      this.validateService.allow(["gateway", "cart"]),
+      this.controller.getStockSummaryByVariant,
     );
   }
 }

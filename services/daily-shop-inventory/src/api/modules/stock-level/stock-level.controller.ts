@@ -14,9 +14,9 @@ export class StockLevelController extends BaseController {
     const query = req.validatedBody?.query || req.query;
     const result = await this.service.getAllStockLevels(query);
     return this.successResponse(res, result, 200, {
-      message:"All stock Levels get successfully.",
+      message: "All stock Levels get successfully.",
       pagination: result.pagination,
-      query
+      query,
     });
   });
 
@@ -26,23 +26,27 @@ export class StockLevelController extends BaseController {
     return this.successResponse(res, result, 200);
   });
 
-  getStockByWarehouseAndVariant = this.asyncHandler(async (req: Request, res: Response) => {
-    const { warehouseId, productVariantId } = req.query;
-    const result = await this.service.getStockByWarehouseAndVariant(
-      warehouseId as string,
-      productVariantId as string
-    );
-    return this.successResponse(res, result, 200);
-  });
+  getStockByWarehouseAndVariant = this.asyncHandler(
+    async (req: Request, res: Response) => {
+      const { warehouseId, productVariantId } = req.query;
+      const result = await this.service.getStockByWarehouseAndVariant(
+        warehouseId as string,
+        productVariantId as string,
+      );
+      return this.successResponse(res, result, 200);
+    },
+  );
 
-  updateStockThresholds = this.asyncHandler(async (req: Request, res: Response) => {
-    const id = req.validatedBody?.params?.id || req.params.id;
-    const data = req.validatedBody?.body || req.body;
-    const result = await this.service.updateStockThresholds(id, data);
-    return this.successResponse(res, result, 200, {
-      message: "Stock thresholds updated successfully",
-    });
-  });
+  updateStockThresholds = this.asyncHandler(
+    async (req: Request, res: Response) => {
+      const id = req.validatedBody?.params?.id || req.params.id;
+      const data = req.validatedBody?.body || req.body;
+      const result = await this.service.updateStockThresholds(id, data);
+      return this.successResponse(res, result, 200, {
+        message: "Stock thresholds updated successfully",
+      });
+    },
+  );
 
   getLowStockAlerts = this.asyncHandler(async (req: Request, res: Response) => {
     const warehouseId = req.query.warehouseId as string;
@@ -51,4 +55,16 @@ export class StockLevelController extends BaseController {
       message: "Low stock alerts fetched successfully",
     });
   });
+
+  getStockSummaryByVariant = this.asyncHandler(
+    async (req: Request, res: Response) => {
+      const productVariantId = req.params.productVariantId;
+      const result = await this.service.getStockSummaryByVariant(
+        productVariantId as string,
+      );
+      return this.successResponse(res, result, 200, {
+        message: "Stock details fetched successfully",
+      });
+    },
+  );
 }

@@ -3,13 +3,21 @@ import { env } from "../../core/config/env.config";
 
 export class authenticate {
   static allow(
-    allowedServices: ("gateway" | "auth" | "user" | "email" | "product")[],
+    allowedServices: (
+      | "gateway"
+      | "auth"
+      | "user"
+      | "email"
+      | "product"
+      | "cart"
+    )[],
   ) {
     return (req: Request, res: Response, next: NextFunction) => {
       const secretMap: Record<string, string | undefined> = {
         gateway: env.GATEWAY_SECRET,
         email: env.EMAIL_SECRET,
         product: env.PRODUCT_SECRET,
+        cart: env.CART_SECRET,
       };
 
       // Map service names to their expected header keys

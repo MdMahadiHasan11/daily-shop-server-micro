@@ -33,4 +33,10 @@ export class ProductController extends BaseController {
       message: "Product created successfully with variants",
     });
   });
+
+  getVariantsByBulk = this.asyncHandler(async (req: Request, res: Response) => {
+    const { variantIds } = req.validatedBody.body;
+    const result = await this.service.getVariantsByBulk(variantIds);
+    return this.successResponse(res, result, 200);
+  });
 }

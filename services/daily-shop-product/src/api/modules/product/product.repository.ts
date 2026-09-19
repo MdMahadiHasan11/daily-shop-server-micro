@@ -135,4 +135,13 @@ export class ProductRepository extends BaseRepository<"product"> {
 
     return productResult;
   }
+
+  async getVariantsByBulk(variantIds: string[]) {
+    return await this.prisma.productVariant.findMany({
+      where: {
+        id: { in: variantIds },
+        isDeleted: false,
+      },
+    });
+  }
 }

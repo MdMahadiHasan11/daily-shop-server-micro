@@ -51,4 +51,13 @@ export class ProductService extends BaseService {
       throw error;
     }
   }
+
+  async getVariantsByBulk(variantIds: string[]): Promise<any[]> {
+    try {
+      return await this.repository.getVariantsByBulk(variantIds);
+    } catch (error) {
+      this._handleError(error, "getVariantsByBulk", { variantIds });
+      throw error;
+    }
+  }
 }

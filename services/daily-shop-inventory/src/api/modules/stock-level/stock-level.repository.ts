@@ -17,7 +17,10 @@ export class StockLevelRepository extends BaseRepository<"stockLevel"> {
   }
 
   // Find a stock level by warehouse ID and product variant ID
-  async findByWarehouseAndVariant(warehouseId: string, productVariantId: string) {
+  async findByWarehouseAndVariant(
+    warehouseId: string,
+    productVariantId: string,
+  ) {
     return await (this.model as any).findUnique({
       where: {
         warehouseId_productVariantId: {
@@ -41,7 +44,18 @@ export class StockLevelRepository extends BaseRepository<"stockLevel"> {
     }
 
     return await (this.model as any).findMany({
-      where: Object.keys(whereCondition).length > 0 ? whereCondition : undefined,
+      where:
+        Object.keys(whereCondition).length > 0 ? whereCondition : undefined,
+      include: {
+        warehouse: true,
+        productVariant: true,
+      },
+    });
+  }
+
+  async getStockByProductVariantId(productVariantId: string) {
+    return await (this.model as any).findMany({
+      where: { productVariantId },
       include: {
         warehouse: true,
         productVariant: true,

@@ -35,6 +35,7 @@ export const env = cleanEnv(process.env, {
   EMAIL_SECRET: str(),
   GATEWAY_SECRET: str(),
   PRODUCT_SECRET: str(),
+  CART_SECRET: str(),
 });
 
 export type Env = typeof env;

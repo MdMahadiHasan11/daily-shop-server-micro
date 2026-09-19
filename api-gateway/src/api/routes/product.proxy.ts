@@ -73,6 +73,12 @@ export class ProductProxyRoute extends BaseProxyRoute {
       },
 
       {
+        path: "/v1/product-service/product/:id",
+        method: "get",
+        // middlewares: [this.middlewares.auth],
+      },
+
+      {
         path: "/v1/product-service/product",
         method: "post",
         // middlewares: [this.middlewares.auth],

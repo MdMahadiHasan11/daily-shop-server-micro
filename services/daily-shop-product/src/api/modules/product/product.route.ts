@@ -27,5 +27,12 @@ export class ProductRoutes extends BaseRoutes<ProductController> {
       this.validateRequest(ProductValidators.createProduct),
       this.controller.createProduct,
     );
+
+    this.router.post(
+      "/variants/bulk",
+      this.validateService.allow(["gateway", "cart"]),
+      this.validateRequest(ProductValidators.getBulkVariants),
+      this.controller.getVariantsByBulk,
+    );
   }
 }
