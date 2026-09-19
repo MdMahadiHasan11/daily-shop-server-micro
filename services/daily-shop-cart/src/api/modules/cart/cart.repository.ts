@@ -39,14 +39,13 @@ export class CartRepository extends BaseRepository<"cart"> {
     try {
       const response = await this.service.get(
         "inventory",
-        `/stock-level/stock/${productVariantId}`,
+        `/stock-level/stock/${productVariantId}?fields=minimal`,
       );
-
+    
       const availableStock = response.data?.availableStock || 0;
       return availableStock >= requestedQuantity;
     } catch (err) {
       console.error("Failed to check stock from Inventory Service:", err);
-      // ফেইল করলে সেইফটির জন্য ফলস রিটার্ন করতে পারেন অথবা বিজনেস পলিসি অনুযায়ী হ্যান্ডেল করতে পারেন
       return false;
     }
   }
@@ -57,7 +56,6 @@ export class CartRepository extends BaseRepository<"cart"> {
       quantity,
     );
 
-    return isStockAvailable;
     if (!isStockAvailable) {
       throw new AppError(
         "Requested quantity exceeds available stock",
@@ -144,7 +142,6 @@ export class CartRepository extends BaseRepository<"cart"> {
         );
       }
 
-      // যদি কোয়ান্টিটি ০ হয়, তবে আইটেমটি কার্ট থেকে ডিলিট করে দেব
       if (quantity <= 0) {
         await tx.cartItem.delete({ where: { id: existingItem.id } });
         return { message: "Item removed from cart successfully" };

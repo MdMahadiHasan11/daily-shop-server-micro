@@ -51,7 +51,6 @@ const createRequestConfig = (
   config?: AxiosRequestConfig,
 ): AxiosRequestConfig => {
   const headers: Record<string, string> = {
-    "x-product-secret": env.PRODUCT_INTERNAL_SECRET,
     "x-cart-secret": env.CART_INTERNAL_SECRET,
     ...extractMetadataHeaders(meta),
     ...(config?.headers as Record<string, string>),

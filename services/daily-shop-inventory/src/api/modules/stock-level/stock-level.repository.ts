@@ -53,13 +53,15 @@ export class StockLevelRepository extends BaseRepository<"stockLevel"> {
     });
   }
 
-  async getStockByProductVariantId(productVariantId: string) {
+  async getStockByProductVariantId(productVariantId: string, selectFields?: any) {
     return await (this.model as any).findMany({
       where: { productVariantId },
-      include: {
-        warehouse: true,
-        productVariant: true,
-      },
+      ...(selectFields ? { select: selectFields } : {
+        include: {
+          warehouse: true,
+          productVariant: true,
+        },
+      }),
     });
   }
 }

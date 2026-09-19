@@ -5,7 +5,10 @@ export class StockLevelValidators extends BaseValidator {
   static listStockLevels = z.object({
     query: this.pagination(["warehouseId", "productVariantId"]).safeExtend({
       warehouseId: z.string().uuid("Invalid Warehouse ID format").optional(),
-      productVariantId: z.string().uuid("Invalid Product Variant ID format").optional(),
+      productVariantId: z
+        .string()
+        .uuid("Invalid Product Variant ID format")
+        .optional(),
     }),
   });
 
@@ -18,8 +21,16 @@ export class StockLevelValidators extends BaseValidator {
 
   static updateThresholds = z.object({
     body: z.object({
-      reorderLevel: z.number().int().nonnegative("Reorder level must be 0 or greater").optional(),
-      reorderQuantity: z.number().int().positive("Reorder quantity must be greater than 0").optional(),
+      reorderLevel: z
+        .number()
+        .int()
+        .nonnegative("Reorder level must be 0 or greater")
+        .optional(),
+      reorderQuantity: z
+        .number()
+        .int()
+        .positive("Reorder quantity must be greater than 0")
+        .optional(),
     }),
   });
 
@@ -28,4 +39,15 @@ export class StockLevelValidators extends BaseValidator {
       warehouseId: z.string().uuid("Invalid Warehouse ID format").optional(),
     }),
   });
+  static getStockCheckSchema = z.object({
+    query: z.object({
+      fields: z.enum(["minimal"]).optional(),
+    }),
+    params: z.object({
+      productVariantId: z.string().uuid("Invalid Product Variant ID format"),
+    }),
+  });
 }
+
+export type StockCheck = z.infer<typeof StockLevelValidators.getStockCheckSchema>;
+

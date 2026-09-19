@@ -121,8 +121,8 @@ export class StockLevelService extends BaseService {
     }
   }
 
-  // Get total, available and detailed stock summary by product variant id
-  async getStockSummaryByVariant(productVariantId: string) {
+  // Get total, available and detailed stock summary by product variant id (supports query params to select specific fields)
+  async getStockSummaryByVariant(productVariantId: string, query?: { fields?: string }) {
     try {
       const stockRecords =
         await this.repository.getStockByProductVariantId(productVariantId);
@@ -160,6 +160,15 @@ export class StockLevelService extends BaseService {
           reorderQuantity: item.reorderQuantity,
         };
       });
+
+      // Check if user requested specific light response via query param (e.g., ?fields=minimal)
+      if (query?.fields === "minimal") {
+        return {
+          productVariantId,
+          totalQuantity,
+          availableStock: totalAvailable,
+        };
+      }
 
       return {
         productVariantId,

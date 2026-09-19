@@ -27,6 +27,7 @@ export class authenticate {
         user: "x-user-secret",
         email: "x-email-secret",
         product: "x-product-secret",
+        cart: "x-cart-secret",
       };
 
       const isAuthorized = allowedServices.some((service) => {
@@ -34,7 +35,6 @@ export class authenticate {
         const headerName = headerMap[service];
 
         const clientSecret = req.headers[headerName];
-
         return (
           expectedSecret && clientSecret && clientSecret === expectedSecret
         );

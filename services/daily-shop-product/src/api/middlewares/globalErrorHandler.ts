@@ -37,11 +37,9 @@ export const globalErrorHandler = async (
       if (targetMeta && targetMeta.length > 0) {
         fieldName = targetMeta.join(", ");
       } else if (driverConstraint) {
-        // e.g., "suppliers_name_key" -> parts: ["suppliers", "name", "key"]
         const parts = driverConstraint.split("_");
 
         if (parts.length > 2 && parts[parts.length - 1] === "key") {
-          // Drop table name (first) and "key" (last), leaving the field name(s)
           const fields = parts.slice(1, -1);
           fieldName = fields.join(", ");
         } else if (parts.length >= 2) {
@@ -74,10 +72,9 @@ export const globalErrorHandler = async (
 
       let fieldName = "related record";
       if (driverConstraint) {
-        // e.g., "categories_parentId_fkey" -> extract field name if possible
         const parts = driverConstraint.split("_");
         if (parts.length >= 2) {
-          fieldName = parts[1]; // yields "parentId"
+          fieldName = parts[1];
         }
       }
 
@@ -87,6 +84,20 @@ export const globalErrorHandler = async (
         true,
         error.meta,
         "FOREIGN_KEY_VIOLATION",
+      );
+    } else if (error.code === "P2021") {
+      // Table does not exist error handling
+      const tableName = 
+        error.meta?.table || 
+        (error.meta?.driverAdapterError as any)?.cause?.table || 
+        "database table";
+
+      error = new AppError(
+        `The table '${tableName}' does not exist in the database. Please check your migrations.`,
+        500,
+        true,
+        error.meta,
+        "TABLE_NOT_FOUND",
       );
     }
   }
@@ -109,7 +120,6 @@ export const globalErrorHandler = async (
     "INTERNAL_ERROR",
   );
 
-  // await notifySlack(fallbackError, req);
   return sendErrorResponse(fallbackError, req, res);
 };
 

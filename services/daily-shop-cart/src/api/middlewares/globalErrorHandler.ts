@@ -88,6 +88,20 @@ export const globalErrorHandler = async (
         error.meta,
         "FOREIGN_KEY_VIOLATION",
       );
+    } else if (error.code === "P2021") {
+      // Table does not exist error handling
+      const tableName = 
+        error.meta?.table || 
+        (error.meta?.driverAdapterError as any)?.cause?.table || 
+        "database table";
+
+      error = new AppError(
+        `The table '${tableName}' does not exist in the database. Please check your migrations.`,
+        500,
+        true,
+        error.meta,
+        "TABLE_NOT_FOUND",
+      );
     }
   }
 

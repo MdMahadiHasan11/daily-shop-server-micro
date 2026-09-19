@@ -23,11 +23,17 @@ export const globalErrorHandler = async (
   });
 
   // ===============================
-  // ZOD VALIDATION ERROR
+  // BODY PARSER / JSON SYNTAX ERROR HANDLING
   // ===============================
-  // if (error instanceof ZodError) {
-  //   error = new ValidationError(error);
-  // }
+  if (error instanceof SyntaxError && "body" in error || error.type === "entity.parse.failed") {
+    error = new AppError(
+      "Invalid JSON payload passed in request body. Please check your JSON syntax.",
+      400,
+      true,
+      error,
+      "INVALID_JSON_PAYLOAD",
+    );
+  }
 
   // ===============================
   // PRISMA ERROR HANDLING
@@ -71,6 +77,20 @@ export const globalErrorHandler = async (
         true,
         error.meta,
         "RECORD_NOT_FOUND"
+      );
+    } else if (error.code === "P2021") {
+      // Table does not exist
+      const tableName = 
+        error.meta?.table || 
+        (error.meta?.driverAdapterError as any)?.cause?.table || 
+        "database table";
+
+      error = new AppError(
+        `The table '${tableName}' does not exist in the database. Please check your migrations.`,
+        500,
+        true,
+        error.meta,
+        "TABLE_NOT_FOUND",
       );
     }
   }
