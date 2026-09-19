@@ -31,6 +31,8 @@ export const env = cleanEnv(process.env, {
   USER_SERVICE: str(),
   MESSAGE_SERVICE: str(),
   FILE_SERVICE: str(),
+  PRODUCT_SERVICE: str(),
+  INVENTORY_SERVICE: str(),
 
   // secret
   GATEWAY_SECRET: str(),
