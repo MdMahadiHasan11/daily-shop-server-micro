@@ -34,6 +34,9 @@ export class ProductValidators extends BaseValidator {
       brandId: z.string().optional().nullable(),
       isFeatured: z.boolean().optional(),
       isBestSeller: z.boolean().optional(),
+
+      tags: z.array(z.string()).optional(),
+
       variants: z
         .array(
           z.object({

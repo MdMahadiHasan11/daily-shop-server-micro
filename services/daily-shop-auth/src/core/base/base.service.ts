@@ -17,6 +17,11 @@ export abstract class BaseService {
   protected serviceName: string = this.constructor.name;
   private readonly startupTime = Date.now();
   protected service = microserviceClient;
+  // const userProfileResponse = await this.service.get(
+  //       "user",
+  //       "/me",
+  //       metaData,
+  //     );
 
   protected handleAxiosError(error: unknown, defaultMessage?: string): never {
     return handleAxiosError(error, defaultMessage);

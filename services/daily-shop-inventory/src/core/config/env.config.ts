@@ -1,5 +1,5 @@
 import * as dotenv from "dotenv";
-import { cleanEnv, makeValidator, num, str, url } from "envalid";
+import { cleanEnv, num, str, url } from "envalid";
 import fs from "fs";
 import path from "path";
 import { logger } from "../utils/logger.utils";
@@ -19,8 +19,6 @@ if (fs.existsSync(envPath)) {
   dotenv.config();
 }
 
- 
-
 export const env = cleanEnv(process.env, {
   NODE_ENV: str({
     choices: ["development", "test", "staging", "production"],
@@ -32,11 +30,11 @@ export const env = cleanEnv(process.env, {
   REDIS_URL: str(),
   QUEUE_URL: url({ default: "" }),
 
- 
   SESSION_TTL_SECONDS: num({ default: 604800 }),
 
   EMAIL_SECRET: str(),
-  GATEWAY_SECRET:str()
+  GATEWAY_SECRET: str(),
+  PRODUCT_SECRET: str(),
 });
 
 export type Env = typeof env;

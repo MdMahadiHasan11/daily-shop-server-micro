@@ -15,7 +15,13 @@ export class ProductSyncService extends BaseService {
   async syncProductVariant(data: any) {
     try {
       if (!data || !data.id || !data.sku || !data.name) {
-        throw new AppError("Invalid payload provided for product variant sync", 400, true, undefined, "INVALID_SYNC_DATA");
+        throw new AppError(
+          "Invalid payload provided for product variant sync",
+          400,
+          true,
+          undefined,
+          "INVALID_SYNC_DATA",
+        );
       }
 
       const syncedVariant = await this.repository.upsertVariant(data);
@@ -31,11 +37,27 @@ export class ProductSyncService extends BaseService {
     try {
       const variant = await this.repository.findVariantById(id);
       if (!variant) {
-        throw new AppError("Product variant not found in inventory sync records", 404, true, undefined, "VARIANT_NOT_FOUND");
+        throw new AppError(
+          "Product variant not found in inventory sync records",
+          404,
+          true,
+          undefined,
+          "VARIANT_NOT_FOUND",
+        );
       }
       return variant;
     } catch (error) {
       this._handleError(error, "getSyncedVariantById", { id });
+      throw error;
+    }
+  }
+
+  // Get all synced variants
+  async getAllSyncedVariants(query: any) {
+    try {
+      return await this.repository.getAllSyncedVariants(query);
+    } catch (error) {
+      this._handleError(error, "getAllSyncedVariants", { query });
       throw error;
     }
   }

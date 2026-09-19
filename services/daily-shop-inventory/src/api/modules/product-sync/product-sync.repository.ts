@@ -69,4 +69,8 @@ export class ProductSyncRepository extends BaseRepository<"productVariant"> {
       data: { isDeleted },
     });
   }
+
+  async getAllSyncedVariants(query: any) {
+    return await this.getList(query);
+  }
 }

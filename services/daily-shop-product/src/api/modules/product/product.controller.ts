@@ -22,7 +22,7 @@ export class ProductController extends BaseController {
 
   getProductById = this.asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const result = await this.service.getProductDetails(id);
+    const result = await this.service.getProductDetails(id as string);
     return this.successResponse(res, result, 200);
   });
 

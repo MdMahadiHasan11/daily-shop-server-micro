@@ -8,7 +8,6 @@ export class ProductRoutes extends BaseRoutes<ProductController> {
   }
 
   protected registerRoutes(): void {
-    
     this.router.get(
       "/",
       this.validateService.allow(["gateway"]),
@@ -16,14 +15,12 @@ export class ProductRoutes extends BaseRoutes<ProductController> {
       this.controller.getAllProducts,
     );
 
-    
     this.router.get(
       "/:id",
       this.validateService.allow(["gateway"]),
       this.controller.getProductById,
     );
 
-    // নতুন প্রোডাক্ট এবং এর ভেরিয়েন্ট তৈরি করার জন্য (Admin/Seller)
     this.router.post(
       "/",
       this.validateService.allow(["gateway"]),

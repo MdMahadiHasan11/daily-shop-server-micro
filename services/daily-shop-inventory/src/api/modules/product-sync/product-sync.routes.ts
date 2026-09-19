@@ -9,15 +9,21 @@ export class ProductSyncRoutes extends BaseRoutes<ProductSyncController> {
   }
 
   protected registerRoutes(): void {
-    // Sync (Create or Update) product variant from product service
     this.router.post(
       "/sync",
-      this.validateService.allow(["gateway"]),
+      this.validateService.allow(["gateway", "product"]),
       this.validateRequest(ProductSyncValidators.syncVariant),
       this.controller.syncVariant,
     );
 
-    // Get single synced variant by ID
+    // ২. Get all synced variants
+    this.router.get(
+      "/",
+      this.validateService.allow(["gateway"]),
+      this.validateRequest(ProductSyncValidators.listSyncedVariants),
+      this.controller.getAllSyncedVariants,
+    );
+
     this.router.get(
       "/:id",
       this.validateService.allow(["gateway"]),

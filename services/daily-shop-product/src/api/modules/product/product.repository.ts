@@ -1,5 +1,6 @@
 import { PaginationResult } from "../../../common/interfaces";
 import { BaseRepository } from "../../../core/base/base.repository";
+import { AppError } from "../../../core/errors/errors";
 import { ProductListQuery } from "./product.validator";
 
 export class ProductRepository extends BaseRepository<"product"> {
@@ -27,32 +28,81 @@ export class ProductRepository extends BaseRepository<"product"> {
 
   async createProductWithVariants(createData: any) {
     return await this.transaction(async (tx) => {
-      const { variants, ...productData } = createData;
+      const { tags, variants, ...productData } = createData;
 
-      // ১. মূল প্রোডাক্ট তৈরি
       const product = await tx.product.create({
         data: productData,
       });
 
-      // ২. প্রোডাক্টের ভেরিয়েন্টগুলো একসাথে তৈরি
-      if (variants && variants.length > 0) {
-        for (const variant of variants) {
-          await tx.productVariant.create({
+      if (tags && tags.length > 0) {
+        for (const tagId of tags) {
+          await tx.productTag.create({
             data: {
-              ...variant,
               productId: product.id,
+              tagId: tagId,
             },
           });
         }
       }
 
-      // সম্পূর্ণ ডেটা রিলেশন সহ রিটার্ন করা
+      const createdVariants = [];
+      if (variants && variants.length > 0) {
+        for (const variant of variants) {
+          const newVariant = await tx.productVariant.create({
+            data: {
+              ...variant,
+              productId: product.id,
+            },
+          });
+          createdVariants.push(newVariant);
+
+          try {
+            const payload = {
+              id: newVariant.id,
+              productId: product.id,
+              sku: newVariant.sku,
+              barcode: newVariant.barcode,
+              name: newVariant.name,
+              price: newVariant.price,
+              discountPrice: newVariant.discountPrice,
+              costPrice: newVariant.costPrice,
+              unit: newVariant.unit,
+              weightValue: newVariant.weightValue,
+              attributes: newVariant.attributes,
+              images: newVariant.images,
+              isDefault: newVariant.isDefault,
+            };
+
+            await this.service.post("inventory", "/product-sync/sync", payload);
+          } catch (syncError: any) {
+            console.error(
+              `Failed to sync variant ${newVariant.sku} with inventory service:`,
+              syncError?.message,
+            );
+
+            // 🛑 FIX 3 (Rollback Handle):
+            throw new AppError(
+              `Inventory synchronization failed for variant: ${newVariant.sku}. Product creation rolled back.`,
+              500,
+              true,
+              undefined,
+              "INVENTORY_SYNC_FAILED",
+            );
+          }
+        }
+      }
+
       return await tx.product.findUnique({
         where: { id: product.id },
         include: {
           variants: true,
           category: true,
           brand: true,
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
         },
       });
     });

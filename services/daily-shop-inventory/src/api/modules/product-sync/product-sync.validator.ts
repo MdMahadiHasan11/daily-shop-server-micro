@@ -10,10 +10,22 @@ export class ProductSyncValidators extends BaseValidator {
       barcode: z.string().optional().nullable(),
       name: z.string().min(1, "Product name is required"),
       price: z.number().positive("Price must be a positive number"),
-      discountPrice: z.number().positive("Discount price must be positive").optional().nullable(),
-      costPrice: z.number().positive("Cost price must be positive").optional().nullable(),
+      discountPrice: z
+        .number()
+        .positive("Discount price must be positive")
+        .optional()
+        .nullable(),
+      costPrice: z
+        .number()
+        .positive("Cost price must be positive")
+        .optional()
+        .nullable(),
       unit: z.string().min(1, "Unit is required"),
-      weightValue: z.number().positive("Weight must be positive").optional().nullable(),
+      weightValue: z
+        .number()
+        .positive("Weight must be positive")
+        .optional()
+        .nullable(),
       attributes: z.record(z.string(), z.any()).optional().nullable(),
       images: z.array(z.string()).optional(),
       isDefault: z.boolean().optional(),
@@ -25,4 +37,21 @@ export class ProductSyncValidators extends BaseValidator {
       id: z.string().uuid("Invalid Product Variant ID format"),
     }),
   });
+
+  static listSyncedVariants = z.object({
+    query: this.pagination(["sku", "name"]).safeExtend({
+      isDeleted: z
+        .string()
+        .transform((val) => val === "true")
+        .default(false),
+      searchIn: z
+        .string()
+        .transform((val) => val.split(","))
+        .default(["sku", "name"]),
+    }),
+  });
 }
+
+export type ProductSyncListQuery = z.infer<
+  typeof ProductSyncValidators.listSyncedVariants
+>;

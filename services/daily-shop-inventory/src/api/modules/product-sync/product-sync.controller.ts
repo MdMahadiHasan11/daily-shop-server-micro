@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { BaseController } from "../../../core/base/base.controller";
 import { ProductSyncService } from "./product-sync.service";
+import { ProductSyncListQuery } from "./product-sync.validator";
 
 export class ProductSyncController extends BaseController {
   private service: ProductSyncService;
@@ -27,4 +28,16 @@ export class ProductSyncController extends BaseController {
       message: "Product variant retrieved successfully",
     });
   });
+
+  getAllSyncedVariants = this.asyncHandler(
+    async (req: Request, res: Response) => {
+      const query = req.validatedBody.query as ProductSyncListQuery["query"];
+      const result = await this.service.getAllSyncedVariants(query);
+      return this.successResponse(res, result, 200, {
+        message: "All synced variants retrieved successfully",
+        pagination: result.pagination,
+        query,
+      });
+    },
+  );
 }
