@@ -1,3 +1,4 @@
+import { EVENTS } from "../../../bootstrap/event.constants";
 import { PaginationResult } from "../../../common/interfaces";
 import { BaseRepository } from "../../../core/base/base.repository";
 import { AppError } from "../../../core/errors/errors";
@@ -27,13 +28,16 @@ export class ProductRepository extends BaseRepository<"product"> {
   }
 
   async createProductWithVariants(createData: any) {
-    return await this.transaction(async (tx) => {
+    // 1. Database Transaction: Save product, tags, and variants in the local database
+    const productResult = await this.transaction(async (tx) => {
       const { tags, variants, ...productData } = createData;
 
+      // Create product
       const product = await tx.product.create({
         data: productData,
       });
 
+      // Assign tags
       if (tags && tags.length > 0) {
         for (const tagId of tags) {
           await tx.productTag.create({
@@ -45,6 +49,7 @@ export class ProductRepository extends BaseRepository<"product"> {
         }
       }
 
+      // Create variants
       const createdVariants = [];
       if (variants && variants.length > 0) {
         for (const variant of variants) {
@@ -55,43 +60,10 @@ export class ProductRepository extends BaseRepository<"product"> {
             },
           });
           createdVariants.push(newVariant);
-
-          try {
-            const payload = {
-              id: newVariant.id,
-              productId: product.id,
-              sku: newVariant.sku,
-              barcode: newVariant.barcode,
-              name: newVariant.name,
-              price: newVariant.price,
-              discountPrice: newVariant.discountPrice,
-              costPrice: newVariant.costPrice,
-              unit: newVariant.unit,
-              weightValue: newVariant.weightValue,
-              attributes: newVariant.attributes,
-              images: newVariant.images,
-              isDefault: newVariant.isDefault,
-            };
-
-            await this.service.post("inventory", "/product-sync/sync", payload);
-          } catch (syncError: any) {
-            console.error(
-              `Failed to sync variant ${newVariant.sku} with inventory service:`,
-              syncError?.message,
-            );
-
-            // 🛑 FIX 3 (Rollback Handle):
-            throw new AppError(
-              `Inventory synchronization failed for variant: ${newVariant.sku}. Product creation rolled back.`,
-              500,
-              true,
-              undefined,
-              "INVENTORY_SYNC_FAILED",
-            );
-          }
         }
       }
 
+      // Return full product data with relations
       return await tx.product.findUnique({
         where: { id: product.id },
         include: {
@@ -106,5 +78,61 @@ export class ProductRepository extends BaseRepository<"product"> {
         },
       });
     });
+
+    // 🛑 Safety check: If productResult is null or undefined for any reason
+    if (!productResult) {
+      throw new AppError(
+        "Failed to create product. Transaction returned null.",
+        500,
+        true,
+        undefined,
+        "PRODUCT_CREATION_FAILED",
+      );
+    }
+
+    // 2. RabbitMQ Event Publishing (Strict Real-Time Sync Handling)
+    try {
+      await this.eventBus.publish(EVENTS.AFTER_PRODUCT_CREATE_NEED_INVENTORY, {
+        productId: productResult.id,
+        productName: productResult.name,
+        slug: productResult.slug,
+        variants: productResult.variants.map((variant) => ({
+          id: variant.id,
+          productId: productResult.id,
+          sku: variant.sku,
+          barcode: variant.barcode,
+          name: variant.name,
+          price: variant.price,
+          discountPrice: variant.discountPrice,
+          costPrice: variant.costPrice,
+          unit: variant.unit,
+          weightValue: variant.weightValue,
+          attributes: variant.attributes,
+          images: variant.images,
+          isDefault: variant.isDefault,
+        })),
+      });
+    } catch (publishError: any) {
+      console.error(
+        `Failed to publish inventory event for product ID ${productResult.id}:`,
+        publishError?.message,
+      );
+
+      // If event publishing fails, soft-delete the product record to maintain data consistency
+      await this.model.update({
+        where: { id: productResult.id },
+        data: { isDeleted: true },
+      });
+
+      throw new AppError(
+        `Failed to initialize inventory for product: ${productResult.name}. Operation aborted.`,
+        500,
+        true,
+        undefined,
+        "INVENTORY_EVENT_PUBLISH_FAILED",
+      );
+    }
+
+    return productResult;
   }
 }
