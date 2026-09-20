@@ -57,23 +57,23 @@ export class OrderService extends BaseService {
         items,
       );
 
-       const FIVE_MINUTES_IN_MS = 1 * 10 * 1000;
+      //  const FIVE_MINUTES_IN_MS = 1 * 10 * 1000;
 
-        await this.eventBus.publishDelayed(
-          "ORDER_PAYMENT_TIMEOUT",
-          {
-            orderId: order.id,
-            orderNumber: order.orderNumber,
-            userId: metaData.id,
-            items: items,
-          },
-          FIVE_MINUTES_IN_MS,
-          {
-            correlationId: order.orderNumber,
-            origin: "order_service",
-            version: 1,
-          },
-        );
+      //   await this.eventBus.publishDelayed(
+      //     "ORDER_PAYMENT_TIMEOUT",
+      //     {
+      //       orderId: order.id,
+      //       orderNumber: order.orderNumber,
+      //       userId: metaData.id,
+      //       items: items,
+      //     },
+      //     FIVE_MINUTES_IN_MS,
+      //     {
+      //       correlationId: order.orderNumber,
+      //       origin: "order_service",
+      //       version: 1,
+      //     },
+      //   );
 
       if (order.paymentMethod === "ONLINE") {
         await this.eventBus.publish("ORDER_STOCK_HOLD", {
@@ -100,12 +100,13 @@ export class OrderService extends BaseService {
           },
         );
       } else {
-        // COD (Cash on Delivery)
-        await this.eventBus.publish("ORDER_CREATED", {
-          orderId: order.id,
-          orderNumber: order.orderNumber,
-          items: items,
-        });
+        // todo : here admin get notification then call user and confirm and update status .the stock reduces.
+        
+        // await this.eventBus.publish("ORDER_CREATED", {
+        //   orderId: order.id,
+        //   orderNumber: order.orderNumber,
+        //   items: items,
+        // });
       }
 
       return order;

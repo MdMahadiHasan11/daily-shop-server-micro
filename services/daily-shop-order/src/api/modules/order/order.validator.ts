@@ -32,7 +32,7 @@ export class OrderValidators extends BaseValidator {
       postalCode: z.string().optional().nullable(),
       country: z.string().default("Bangladesh"),
       notes: z.string().optional().nullable(),
-
+      shippingFee:z.number().default(0),
       items: z
         .array(
           z.object({

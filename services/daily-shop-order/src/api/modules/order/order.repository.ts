@@ -17,8 +17,8 @@ export class OrderRepository extends BaseRepository<"order"> {
         "inventory",
         `/stock-level/stock/${productVariantId}?fields=minimal`,
       );
-      const availableStock = response.data?.availableStock || 0;
-      return availableStock;
+      const maxSingleWarehouseStock = response.data?.maxSingleWarehouseStock || 0;
+      return maxSingleWarehouseStock;
     } catch (err) {
       console.error("Failed to check stock from Inventory Service:", err);
       return 0;
@@ -80,9 +80,9 @@ export class OrderRepository extends BaseRepository<"order"> {
         item.productVariantId,
       );
 
-      if (availableStock < item.quantity) {
+     if (availableStock < item.quantity) {
         throw new AppError(
-          `Insufficient stock for product variant: ${item.productVariantId}. Available: ${availableStock}`,
+          `Insufficient stock for product . Available: ${availableStock} quantity  at a time. `,
           400,
           true,
           undefined,
@@ -118,7 +118,7 @@ export class OrderRepository extends BaseRepository<"order"> {
     }
 
     const rawOrderData = orderData as any;
-    const shippingFee = rawOrderData.shippingFee || 50;
+    const shippingFee = rawOrderData.shippingFee || 0;
     const discountAmount = rawOrderData.discountAmount || 0;
     const taxAmount = rawOrderData.taxAmount || 0;
     const totalAmount = subTotal + shippingFee + taxAmount - discountAmount;

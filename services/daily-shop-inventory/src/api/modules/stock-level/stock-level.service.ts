@@ -1,5 +1,6 @@
 import { BaseService } from "../../../core/base/base.service";
 import { AppError } from "../../../core/errors/errors";
+import { logger } from "../../../core/utils/logger.utils";
 import { StockLevelRepository } from "./stock-level.repository";
 
 export class StockLevelService extends BaseService {
@@ -380,10 +381,95 @@ export class StockLevelService extends BaseService {
       */
 
       const order = await this.repository.OrderCheck(orderId);
-
       console.log(order);
+      if (
+        order &&
+        (order.paymentStatus === "PAID" ||
+          order.status === "APPROVED" ||
+          order.status === "CONFIRMED")
+      ) {
+        logger.info(
+          { orderId },
+          "Order is already paid or approved. Skipping stock release inside releaseStockForOrder. 👍",
+        );
+        return;
+      }
 
-   return
+      await this.db.$transaction(async (tx: any) => {
+        for (const item of items) {
+          const { productVariantId, quantity, warehouseId } = item;
+
+          let stockLevelQuery: any = {
+            productVariantId: productVariantId,
+            isDeleted: false,
+          };
+
+          if (warehouseId) {
+            stockLevelQuery.warehouseId = warehouseId;
+          }
+
+          const stockLevels = await tx.stockLevel.findMany({
+            where: stockLevelQuery,
+          });
+
+          if (!stockLevels || stockLevels.length === 0) continue;
+
+          for (const stockLevel of stockLevels) {
+            // Skip if there is no reserved stock in this warehouse
+            if (stockLevel.reservedQuantity <= 0) continue;
+
+            const batches = await tx.StockBatch.findMany({
+              where: {
+                productVariantId: productVariantId,
+                warehouseId: stockLevel.warehouseId,
+                isDeleted: false,
+              },
+            });
+
+            let remainingToRelease = quantity;
+
+            for (const batch of batches) {
+              if (remainingToRelease <= 0) break;
+              if (!batch.reservedQuantity || batch.reservedQuantity <= 0)
+                continue;
+
+              const releaseFromBatch = Math.min(
+                batch.reservedQuantity,
+                remainingToRelease,
+              );
+
+              // Decrement the reservedQuantity of the batch
+              await tx.StockBatch.update({
+                where: { id: batch.id },
+                data: {
+                  reservedQuantity: {
+                    decrement: releaseFromBatch,
+                  },
+                },
+              });
+
+              remainingToRelease -= releaseFromBatch;
+            }
+
+            // Decrement the reservedQuantity from the StockLevel table
+            // Ensure it never results in a negative value
+            const newReservedQty = Math.max(
+              0,
+              stockLevel.reservedQuantity - quantity,
+            );
+
+            await tx.stockLevel.update({
+              where: { id: stockLevel.id },
+              data: {
+                reservedQuantity: newReservedQty,
+              },
+            });
+            break;
+          }
+        }
+      });
+
+      return;
     } catch (error) {
       if (error instanceof AppError) {
         throw error;
