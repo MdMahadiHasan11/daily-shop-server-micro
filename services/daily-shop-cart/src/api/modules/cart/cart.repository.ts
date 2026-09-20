@@ -32,40 +32,22 @@ export class CartRepository extends BaseRepository<"cart"> {
     }
   }
 
-  async checkStockAvailability(
-    productVariantId: string,
-    requestedQuantity: number,
-  ): Promise<boolean> {
+  async checkStockAvailability(productVariantId: string): Promise<number> {
     try {
       const response = await this.service.get(
         "inventory",
         `/stock-level/stock/${productVariantId}?fields=minimal`,
       );
-    
+
       const availableStock = response.data?.availableStock || 0;
-      return availableStock >= requestedQuantity;
+      return availableStock;
     } catch (err) {
       console.error("Failed to check stock from Inventory Service:", err);
-      return false;
+      return 0;
     }
   }
 
   async addToCart(userId: string, productVariantId: string, quantity: number) {
-    const isStockAvailable = await this.checkStockAvailability(
-      productVariantId,
-      quantity,
-    );
-
-    if (!isStockAvailable) {
-      throw new AppError(
-        "Requested quantity exceeds available stock",
-        400,
-        true,
-        undefined,
-        "OUT_OF_STOCK",
-      );
-    }
-
     return await this.transaction(async (tx) => {
       let cart = await tx.cart.findUnique({ where: { userId } });
 
@@ -79,11 +61,26 @@ export class CartRepository extends BaseRepository<"cart"> {
         },
       });
 
+      const currentCartQuantity = existingItem ? existingItem.quantity : 0;
+      const totalRequestedQuantity = currentCartQuantity + quantity;
+
+      const stockAvailable =
+        await this.checkStockAvailability(productVariantId);
+
+      if (stockAvailable < totalRequestedQuantity) {
+        throw new AppError(
+          "Requested quantity exceeds available stock",
+          400,
+          true,
+          undefined,
+          "OUT_OF_STOCK",
+        );
+      }
+
       if (existingItem) {
-        const newQuantity = existingItem.quantity + quantity;
         return await tx.cartItem.update({
           where: { id: existingItem.id },
-          data: { quantity: newQuantity },
+          data: { quantity: totalRequestedQuantity },
         });
       } else {
         return await tx.cartItem.create({
@@ -109,22 +106,6 @@ export class CartRepository extends BaseRepository<"cart"> {
       );
     }
 
-    if (quantity > 0) {
-      const isStockAvailable = await this.checkStockAvailability(
-        productVariantId,
-        quantity,
-      );
-      if (!isStockAvailable) {
-        throw new AppError(
-          "Requested quantity exceeds available stock",
-          400,
-          true,
-          undefined,
-          "OUT_OF_STOCK",
-        );
-      }
-    }
-
     return await this.transaction(async (tx) => {
       const existingItem = await tx.cartItem.findUnique({
         where: {
@@ -142,11 +123,27 @@ export class CartRepository extends BaseRepository<"cart"> {
         );
       }
 
+      // If quantity is 0 or less, remove the item entirely
       if (quantity <= 0) {
         await tx.cartItem.delete({ where: { id: existingItem.id } });
         return { message: "Item removed from cart successfully" };
       }
 
+      // Check stock availability inside the transaction wrapper (Comparing numbers correctly)
+      const stockAvailable =
+        await this.checkStockAvailability(productVariantId);
+
+      if (stockAvailable < quantity) {
+        throw new AppError(
+          "Requested quantity exceeds available stock",
+          400,
+          true,
+          undefined,
+          "OUT_OF_STOCK",
+        );
+      }
+
+      // Update the cart item quantity safely
       return await tx.cartItem.update({
         where: { id: existingItem.id },
         data: { quantity },

@@ -6,8 +6,6 @@ export class authenticate {
     allowedServices: ("gateway" | "auth" | "user" | "email" | "cart")[],
   ) {
     return (req: Request, res: Response, next: NextFunction) => {
-
-      console.log(req.headers,"oooooooooooooooooooooooooooooooooooooooooooo");
       const secretMap: Record<string, string | undefined> = {
         gateway: env.GATEWAY_SECRET,
         email: env.EMAIL_SECRET,

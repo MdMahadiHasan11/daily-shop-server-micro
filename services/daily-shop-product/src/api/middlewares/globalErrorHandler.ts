@@ -28,7 +28,6 @@ export const globalErrorHandler = async (
   // ===============================
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") {
-      // Extract target from standard prisma meta or driver adapter constraint index
       const targetMeta = error.meta?.target as string[];
       const driverConstraint = (error.meta?.driverAdapterError as any)?.cause
         ?.constraint?.index;
@@ -57,7 +56,6 @@ export const globalErrorHandler = async (
         "DUPLICATE_ENTITY",
       );
     } else if (error.code === "P2025") {
-      // Record not found
       error = new AppError(
         "Requested record not found in the database.",
         404,
@@ -66,7 +64,6 @@ export const globalErrorHandler = async (
         "RECORD_NOT_FOUND",
       );
     } else if (error.code === "P2003") {
-      // Foreign Key Constraint Violation
       const driverConstraint = (error.meta?.driverAdapterError as any)?.cause
         ?.constraint?.index;
 
@@ -86,10 +83,9 @@ export const globalErrorHandler = async (
         "FOREIGN_KEY_VIOLATION",
       );
     } else if (error.code === "P2021") {
-      // Table does not exist error handling
-      const tableName = 
-        error.meta?.table || 
-        (error.meta?.driverAdapterError as any)?.cause?.table || 
+      const tableName =
+        error.meta?.table ||
+        (error.meta?.driverAdapterError as any)?.cause?.table ||
         "database table";
 
       error = new AppError(
@@ -100,6 +96,24 @@ export const globalErrorHandler = async (
         "TABLE_NOT_FOUND",
       );
     }
+  }
+
+  // ===============================
+  // BODY PARSER / JSON SYNTAX ERROR
+  // ===============================
+  const errObj = error as any;
+  if (
+    error instanceof SyntaxError ||
+    errObj?.type === "entity.parse.failed" ||
+    (errObj?.status === 400 && "body" in errObj)
+  ) {
+    error = new AppError(
+      "Invalid JSON payload passed in the request body. Please ensure your JSON is properly formatted.",
+      400,
+      true,
+      errObj.body || errObj.message,
+      "INVALID_JSON_BODY",
+    );
   }
 
   // ===============================

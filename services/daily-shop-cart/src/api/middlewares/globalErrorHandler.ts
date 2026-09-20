@@ -90,9 +90,9 @@ export const globalErrorHandler = async (
       );
     } else if (error.code === "P2021") {
       // Table does not exist error handling
-      const tableName = 
-        error.meta?.table || 
-        (error.meta?.driverAdapterError as any)?.cause?.table || 
+      const tableName =
+        error.meta?.table ||
+        (error.meta?.driverAdapterError as any)?.cause?.table ||
         "database table";
 
       error = new AppError(
@@ -103,6 +103,24 @@ export const globalErrorHandler = async (
         "TABLE_NOT_FOUND",
       );
     }
+  }
+
+  // ===============================
+  // BODY PARSER / JSON SYNTAX ERROR
+  // ===============================
+  const errObj = error as any;
+  if (
+    error instanceof SyntaxError ||
+    errObj?.type === "entity.parse.failed" ||
+    (errObj?.status === 400 && "body" in errObj)
+  ) {
+    error = new AppError(
+      "Invalid or empty JSON payload passed in the request body. Please ensure your request contains properly formatted JSON.",
+      400,
+      true,
+      errObj.body || errObj.message,
+      "INVALID_JSON_BODY",
+    );
   }
 
   // ===============================

@@ -14,7 +14,7 @@ export class StockLevelController extends BaseController {
   getAllStockLevels = this.asyncHandler(async (req: Request, res: Response) => {
     const query = req.validatedBody?.query || req.query;
     const result = await this.service.getAllStockLevels(query);
-    return this.successResponse(res, result, 200, {
+    return this.successResponse(res, result.data, 200, {
       message: "All stock Levels get successfully.",
       pagination: result.pagination,
       query,
@@ -59,7 +59,7 @@ export class StockLevelController extends BaseController {
 
   getStockSummaryByVariant = this.asyncHandler(
     async (req: Request, res: Response) => {
-      const body = req.validatedBody as StockCheck
+      const body = req.validatedBody as StockCheck;
       const result = await this.service.getStockSummaryByVariant(
         body.params.productVariantId as string,
         body.query,
