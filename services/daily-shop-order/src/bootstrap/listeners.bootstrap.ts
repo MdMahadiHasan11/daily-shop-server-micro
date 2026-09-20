@@ -1,9 +1,5 @@
-
-import { eventBus } from "../core/services/event-bus-rabit.service";
 import { redisSubscriberService } from "../core/services/redis-subscriber.service";
 import { logger } from "../core/utils/logger.utils";
-import { IMetaData } from "../core/utils/request-metadata";
-import { EVENTS } from "./event.constants";
 
 interface LoginInitiate {
   name?: string;
@@ -29,6 +25,4 @@ export async function bootstrapListeners(): Promise<void> {
   });
 
   await redisSubscriberService.start();
-
-  
 }

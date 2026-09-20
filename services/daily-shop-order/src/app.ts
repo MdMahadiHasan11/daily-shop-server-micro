@@ -43,7 +43,7 @@ app.get("/health", async (_req, res) => {
   });
 });
 
-app.use("/v1/product-service", router);
+app.use("/v1/order", router);
 
 app.use(notFoundHandler);
 app.use(globalErrorHandler);

@@ -1,0 +1,104 @@
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  COD
+  ONLINE
+  WALLET
+}
+
+model Order {
+  id          String @id @default(uuid())
+  orderNumber String @unique
+  userId      String // User ID from User Service
+
+  // Optional: If user selected a saved address from User Service
+  userAddressId String?
+
+  status        OrderStatus   @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentMethod PaymentMethod @default(COD)
+
+  // Financial Calculations
+  subTotal       Float
+  discountAmount Float @default(0)
+  shippingFee    Float @default(0)
+  taxAmount      Float @default(0)
+  totalAmount    Float // Final payable amount
+
+  // Shipping & Contact Details (Snapshot / Manually Added during checkout)
+  shippingName    String
+  shippingPhone   String
+  shippingEmail   String?
+  shippingAddress String  @db.Text
+  city            String
+  state           String?
+  postalCode      String?
+  country         String  @default("Bangladesh")
+  notes           String? @db.Text
+
+  // Relations
+  items         OrderItem[]
+  statusHistory OrderStatusHistory[]
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@map("orders")
+}
+
+model OrderItem {
+  id      String @id @default(uuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productVariantId String // References ProductVariant from Product/Inventory Service
+  productName      String // Snapshot of product name
+  sku              String // Snapshot of SKU
+  image            String? // Snapshot of product image
+
+  price      Float // Price at the time of purchase
+  quantity   Int
+  totalPrice Float // price * quantity
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([productVariantId])
+  @@map("order_items")
+}
+
+model OrderStatusHistory {
+  id      String @id @default(uuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  status    OrderStatus
+  note      String?     @db.Text
+  changedBy String? // User ID or Admin ID who changed the status
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@map("order_status_history")
+}
