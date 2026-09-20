@@ -48,7 +48,7 @@ export class StockLevelRoutes extends BaseRoutes<StockLevelController> {
 
     this.router.get(
       "/stock/:productVariantId",
-      this.validateService.allow(["gateway", "cart"]),
+      this.validateService.allow(["gateway", "cart", "order"]),
       this.validateRequest(StockLevelValidators.getStockCheckSchema),
       this.controller.getStockSummaryByVariant,
     );

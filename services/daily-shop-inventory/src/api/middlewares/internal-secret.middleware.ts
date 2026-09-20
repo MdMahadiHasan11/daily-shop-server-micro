@@ -10,6 +10,7 @@ export class authenticate {
       | "email"
       | "product"
       | "cart"
+      | "order"
     )[],
   ) {
     return (req: Request, res: Response, next: NextFunction) => {
@@ -18,6 +19,7 @@ export class authenticate {
         email: env.EMAIL_SECRET,
         product: env.PRODUCT_SECRET,
         cart: env.CART_SECRET,
+        order: env.ORDER_SECRET,
       };
 
       // Map service names to their expected header keys
@@ -28,6 +30,7 @@ export class authenticate {
         email: "x-email-secret",
         product: "x-product-secret",
         cart: "x-cart-secret",
+        order: "x-order-secret",
       };
 
       const isAuthorized = allowedServices.some((service) => {

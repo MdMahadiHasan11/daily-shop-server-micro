@@ -53,15 +53,31 @@ export class StockLevelRepository extends BaseRepository<"stockLevel"> {
     });
   }
 
-  async getStockByProductVariantId(productVariantId: string, selectFields?: any) {
+  async getStockByProductVariantId(
+    productVariantId: string,
+    selectFields?: any,
+  ) {
     return await (this.model as any).findMany({
       where: { productVariantId },
-      ...(selectFields ? { select: selectFields } : {
-        include: {
-          warehouse: true,
-          productVariant: true,
-        },
-      }),
+      ...(selectFields
+        ? { select: selectFields }
+        : {
+            include: {
+              warehouse: true,
+              productVariant: true,
+            },
+          }),
     });
+  }
+
+  async OrderCheck(orderId: string) {
+    try {
+      const response = await this.service.get("order", `/${orderId}`);
+      const order = response.data;
+      return order;
+    } catch (err) {
+      console.error("Failed to check stock from Order Service:", err);
+      return null;
+    }
   }
 }

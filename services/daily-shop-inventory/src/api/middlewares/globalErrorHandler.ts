@@ -1,5 +1,6 @@
-import { NextFunction, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
+import axios from "axios";
+import { NextFunction, Request, Response } from "express";
 import { AppError } from "../../core/errors/errors";
 
 /**
@@ -23,34 +24,22 @@ export const globalErrorHandler = async (
   });
 
   // ===============================
-  // BODY PARSER / JSON SYNTAX ERROR HANDLING
-  // ===============================
-  if (error instanceof SyntaxError && "body" in error || error.type === "entity.parse.failed") {
-    error = new AppError(
-      "Invalid JSON payload passed in request body. Please check your JSON syntax.",
-      400,
-      true,
-      error,
-      "INVALID_JSON_PAYLOAD",
-    );
-  }
-
-  // ===============================
   // PRISMA ERROR HANDLING
   // ===============================
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") {
       // Extract target from standard prisma meta or driver adapter constraint index
       const targetMeta = error.meta?.target as string[];
-      const driverConstraint = (error.meta?.driverAdapterError as any)?.cause?.constraint?.index;
-      
+      const driverConstraint = (error.meta?.driverAdapterError as any)?.cause
+        ?.constraint?.index;
+
       let fieldName = "field";
       if (targetMeta && targetMeta.length > 0) {
         fieldName = targetMeta.join(", ");
       } else if (driverConstraint) {
         // e.g., "suppliers_name_key" -> parts: ["suppliers", "name", "key"]
         const parts = driverConstraint.split("_");
-        
+
         if (parts.length > 2 && parts[parts.length - 1] === "key") {
           // Drop table name (first) and "key" (last), leaving the field name(s)
           const fields = parts.slice(1, -1);
@@ -67,7 +56,7 @@ export const globalErrorHandler = async (
         409,
         true,
         error.meta,
-        "DUPLICATE_ENTITY"
+        "DUPLICATE_ENTITY",
       );
     } else if (error.code === "P2025") {
       // Record not found
@@ -76,13 +65,34 @@ export const globalErrorHandler = async (
         404,
         true,
         error.meta,
-        "RECORD_NOT_FOUND"
+        "RECORD_NOT_FOUND",
+      );
+    } else if (error.code === "P2003") {
+      // Foreign Key Constraint Violation
+      const driverConstraint = (error.meta?.driverAdapterError as any)?.cause
+        ?.constraint?.index;
+
+      let fieldName = "related record";
+      if (driverConstraint) {
+        // e.g., "categories_parentId_fkey" -> extract field name if possible
+        const parts = driverConstraint.split("_");
+        if (parts.length >= 2) {
+          fieldName = parts[1]; // yields "parentId"
+        }
+      }
+
+      error = new AppError(
+        `Foreign key constraint failed. The provided '${fieldName}' does not exist in the referenced table.`,
+        400,
+        true,
+        error.meta,
+        "FOREIGN_KEY_VIOLATION",
       );
     } else if (error.code === "P2021") {
-      // Table does not exist
-      const tableName = 
-        error.meta?.table || 
-        (error.meta?.driverAdapterError as any)?.cause?.table || 
+      // Table does not exist error handling
+      const tableName =
+        error.meta?.table ||
+        (error.meta?.driverAdapterError as any)?.cause?.table ||
         "database table";
 
       error = new AppError(
@@ -93,6 +103,24 @@ export const globalErrorHandler = async (
         "TABLE_NOT_FOUND",
       );
     }
+  }
+
+  // ===============================
+  // BODY PARSER / JSON SYNTAX ERROR
+  // ===============================
+  const errObj = error as any;
+  if (
+    error instanceof SyntaxError ||
+    errObj?.type === "entity.parse.failed" ||
+    (errObj?.status === 400 && "body" in errObj)
+  ) {
+    error = new AppError(
+      "Invalid or empty JSON payload passed in the request body. Please ensure your request contains properly formatted JSON.",
+      400,
+      true,
+      errObj.body || errObj.message,
+      "INVALID_JSON_BODY",
+    );
   }
 
   // ===============================
@@ -134,4 +162,31 @@ const sendErrorResponse = (err: AppError, req: Request, res: Response) => {
       context: err.context,
     }),
   });
+};
+
+export const handleAxiosError = (
+  error: unknown,
+  defaultMessage = "Inter-service communication failed",
+): never => {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status || 502;
+    const errorData: any = error.response?.data;
+
+    const message = errorData?.message || errorData?.error || defaultMessage;
+
+    throw new AppError(
+      message,
+      status,
+      true,
+      (errorData?.details || errorData?.stack) as any,
+      errorData?.code || "INTER_SERVICE_ERROR",
+    );
+  }
+
+  if (error instanceof AppError) {
+    throw error;
+  }
+
+  const fallbackDetails = error instanceof Error ? error.stack : error;
+  throw new AppError(defaultMessage, 500, false, fallbackDetails as any);
 };

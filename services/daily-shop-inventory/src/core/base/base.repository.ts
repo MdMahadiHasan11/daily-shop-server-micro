@@ -5,6 +5,7 @@ import {
   PaginationResult,
 } from "../../common/interfaces/pagination.types";
 import db from "../lib/prisma";
+import { microserviceClient } from "../services/axios.service";
 
 function setNestedDateFilter(
   obj: any,
@@ -28,6 +29,7 @@ export abstract class BaseRepository<T extends keyof PrismaClient> {
   protected prisma: PrismaClient;
   protected modelName: T;
   //   protected redis: typeof db.redis;
+  protected service = microserviceClient;
 
   constructor(modelName: T) {
     this.prisma = db.prisma;

@@ -138,11 +138,12 @@ model StockBatch {
   warehouseId      String
   warehouse        Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
 
-  initialQuantity Int
-  currentQuantity Int
-  purchasePrice   Float?
-  mfgDate         DateTime?
-  expiryDate      DateTime?
+  initialQuantity  Int
+  currentQuantity  Int
+  reservedQuantity Int       @default(0)
+  purchasePrice    Float?
+  mfgDate          DateTime?
+  expiryDate       DateTime?
 
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())

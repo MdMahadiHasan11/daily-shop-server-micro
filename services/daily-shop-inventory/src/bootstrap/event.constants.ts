@@ -3,4 +3,5 @@ export interface EventType<T = any> {
 }
 export const EVENTS = {
   AFTER_PRODUCT_CREATE_NEED_INVENTORY: "AFTER_PRODUCT_CREATE_NEED_INVENTORY",
+  ORDER_STOCK_HOLD: "ORDER_STOCK_HOLD",
 };

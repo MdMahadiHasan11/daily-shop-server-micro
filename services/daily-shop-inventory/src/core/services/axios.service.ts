@@ -6,7 +6,7 @@ import { IMetaData } from "../utils/request-metadata";
 
 const getServiceUrl = (serviceName: string): string => {
   const urls: Record<string, string> = {
-    inventory: `${env.INVENTORY_SERVICE_URL || "http://localhost:5021"}/v1/inventory`,
+    order: `${env.ORDER_SERVICE_URL || "http://localhost:5025"}/v1/order`,
     product: `${env.PRODUCT_SERVICE_URL || "http://localhost:5020"}/v1/product-service`,
   };
   const url = urls[serviceName.toLowerCase()];
@@ -51,7 +51,7 @@ const createRequestConfig = (
   config?: AxiosRequestConfig,
 ): AxiosRequestConfig => {
   const headers: Record<string, string> = {
-    "x-order-secret": env.ORDER_INTERNAL_SECRET,
+    "x-inventory-secret": env.INVENTORY_INTERNAL_SECRET,
     ...extractMetadataHeaders(meta),
     ...(config?.headers as Record<string, string>),
   };

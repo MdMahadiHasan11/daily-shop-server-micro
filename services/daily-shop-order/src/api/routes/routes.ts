@@ -1,10 +1,8 @@
 import { Router } from "express";
+import { OrderRoutes } from "../modules/order/order.routes";
 
 const router = Router();
 // router.use(authenticate);
-// router.use("/product", new ProductRoutes().getRouter());
-// router.use("/categories", new CategoryRoutes().getRouter());
-// router.use("/brand", new BrandRoutes().getRouter());
-// router.use("/tag", new TagRoutes().getRouter());
+router.use("/", new OrderRoutes().getRouter());
 
 export default router;
