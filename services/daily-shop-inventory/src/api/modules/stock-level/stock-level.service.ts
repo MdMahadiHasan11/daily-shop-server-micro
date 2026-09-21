@@ -365,28 +365,11 @@ export class StockLevelService extends BaseService {
     const { orderId, items } = data;
 
     try {
-      // 1. Call Order Service (via HTTP or RPC) to check the current status of the order
-      // Example: const orderResponse = await this.orderServiceClient.get(`/orders/${orderId}`);
-      // const order = orderResponse.data;
-
-      // 2. If the order is already PAID, APPROVED, or CONFIRMED, do NOT release the stock
-      /*
-      if (order && (order.paymentStatus === 'PAID' || order.status === 'APPROVED' || order.status === 'CONFIRMED')) {
-        logger.info(
-          { orderId },
-          "Order is already paid or approved. Skipping stock release inside releaseStockForOrder. 👍"
-        );
-        return;
-      }
-      */
-
       const order = await this.repository.OrderCheck(orderId);
-      console.log(order);
+
       if (
         order &&
-        (order.paymentStatus === "PAID" ||
-          order.status === "APPROVED" ||
-          order.status === "CONFIRMED")
+        (order.paymentStatus === "PAID" || order.status === "CONFIRMED")
       ) {
         logger.info(
           { orderId },
@@ -451,8 +434,6 @@ export class StockLevelService extends BaseService {
               remainingToRelease -= releaseFromBatch;
             }
 
-            // Decrement the reservedQuantity from the StockLevel table
-            // Ensure it never results in a negative value
             const newReservedQty = Math.max(
               0,
               stockLevel.reservedQuantity - quantity,
@@ -469,6 +450,7 @@ export class StockLevelService extends BaseService {
         }
       });
 
+      await this.repository.OrderStatusUpdate(orderId);
       return;
     } catch (error) {
       if (error instanceof AppError) {

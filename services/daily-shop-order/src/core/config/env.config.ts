@@ -31,6 +31,7 @@ export const env = cleanEnv(process.env, {
   QUEUE_URL: url({ default: "" }),
 
   SESSION_TTL_SECONDS: num({ default: 604800 }),
+  STOCK_TIMEOUT: num({ default: 300000 }),
 
   EMAIL_SECRET: str(),
   GATEWAY_SECRET: str(),

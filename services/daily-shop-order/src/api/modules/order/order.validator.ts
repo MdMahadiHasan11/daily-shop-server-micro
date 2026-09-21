@@ -32,7 +32,7 @@ export class OrderValidators extends BaseValidator {
       postalCode: z.string().optional().nullable(),
       country: z.string().default("Bangladesh"),
       notes: z.string().optional().nullable(),
-      shippingFee:z.number().default(0),
+      shippingFee: z.number().default(0),
       items: z
         .array(
           z.object({
@@ -66,8 +66,14 @@ export class OrderValidators extends BaseValidator {
       id: z.string(),
     }),
   });
+  static repayOrder = z.object({
+    params: z.object({
+      id: z.string(),
+    }),
+  });
 }
 
 export type OrderListQuery = z.infer<typeof OrderValidators.listOrders>;
 export type OrderCreate = z.infer<typeof OrderValidators.createOrder>;
 export type OrderUpdate = z.infer<typeof OrderValidators.updateOrderStatus>;
+export type RePayOrder = z.infer<typeof OrderValidators.repayOrder>;

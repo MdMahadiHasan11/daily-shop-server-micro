@@ -1,4 +1,5 @@
 import { BaseRepository } from "../../../core/base/base.repository";
+import { logger } from "../../../core/utils/logger.utils";
 
 export class StockLevelRepository extends BaseRepository<"stockLevel"> {
   constructor() {
@@ -78,6 +79,29 @@ export class StockLevelRepository extends BaseRepository<"stockLevel"> {
     } catch (err) {
       console.error("Failed to check stock from Order Service:", err);
       return null;
+    }
+  }
+
+  async OrderStatusUpdate(orderId: string) {
+    try {
+      await this.service.patch("order", `/${orderId}/status`, {
+        status: "CANCELLED",
+        note: "Stock released due to order timeout/cancellation",
+      });
+
+      logger.info(
+        { orderId },
+        "Stock released successfully and order status updated to CANCELLED in Order Service. 🚀",
+      );
+    } catch (orderUpdateErr) {
+      logger.error(
+        { orderId, err: orderUpdateErr },
+        "Stock was released successfully, but failed to update order status to CANCELLED in Order Service.",
+      );
+
+      throw new Error(
+        "Stock released, but failed to synchronize status with Order Service",
+      );
     }
   }
 }

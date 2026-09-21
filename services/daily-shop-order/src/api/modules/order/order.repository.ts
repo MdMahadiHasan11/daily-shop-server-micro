@@ -5,10 +5,36 @@ import { IMetaData } from "../../../core/utils/request-metadata";
 import { Utils } from "../../utils/order.utils";
 import { IProductVariant } from "./order.type";
 import { OrderCreate, OrderListQuery } from "./order.validator";
+interface OrderItem {
+  productVariantId: string;
+  quantity: number;
+  [key: string]: any;
+}
 
+interface TransformedItem {
+  productVariantId: string;
+  quantity: number;
+  warehouseId?: string;
+}
 export class OrderRepository extends BaseRepository<"order"> {
   constructor() {
     super("order");
+  }
+
+  transformOrderItems(
+    items: OrderItem[],
+    warehouseId?: string,
+  ): TransformedItem[] {
+    try {
+      return items.map((item) => ({
+        productVariantId: item.productVariantId,
+        quantity: item.quantity,
+        ...(warehouseId && { warehouseId }),
+      }));
+    } catch (err) {
+      console.error("Failed to transform order items:", err);
+      return [];
+    }
   }
 
   async checkStockAvailability(productVariantId: string): Promise<number> {
@@ -17,7 +43,8 @@ export class OrderRepository extends BaseRepository<"order"> {
         "inventory",
         `/stock-level/stock/${productVariantId}?fields=minimal`,
       );
-      const maxSingleWarehouseStock = response.data?.maxSingleWarehouseStock || 0;
+      const maxSingleWarehouseStock =
+        response.data?.maxSingleWarehouseStock || 0;
       return maxSingleWarehouseStock;
     } catch (err) {
       console.error("Failed to check stock from Inventory Service:", err);
@@ -80,7 +107,7 @@ export class OrderRepository extends BaseRepository<"order"> {
         item.productVariantId,
       );
 
-     if (availableStock < item.quantity) {
+      if (availableStock < item.quantity) {
         throw new AppError(
           `Insufficient stock for product . Available: ${availableStock} quantity  at a time. `,
           400,
@@ -177,53 +204,63 @@ export class OrderRepository extends BaseRepository<"order"> {
     status: any,
     note: string | null | undefined,
     changedBy: string,
+    warehouseId?: string,
   ) {
-    return await this.transaction(async (tx) => {
-      // 1. Find the existing order
-      const order = await tx.order.findUnique({
-        where: { id: orderId },
-        include: {
-          items: true,
-          statusHistory: true,
-        },
-      });
+    // 1. Transaction block for database operations
+    const { updatedOrder, previousStatus } = await this.transaction(
+      async (tx) => {
+        const order = await tx.order.findUnique({
+          where: { id: orderId },
+          include: { items: true, statusHistory: true },
+        });
 
-      if (!order) {
-        throw new AppError(
-          "Order not found",
-          404,
-          true,
-          undefined,
-          "ORDER_NOT_FOUND",
-        );
-      }
+        if (!order) {
+          throw new AppError(
+            "Order not found",
+            404,
+            true,
+            undefined,
+            "ORDER_NOT_FOUND",
+          );
+        }
 
-      // 2. Check if the requested status is the exact same as the current status
-      if (order.status === status) {
-        // If the status is the same, skip updating and return the existing order
-        return order;
-      }
+        if (order.status === status) {
+          return { updatedOrder: order, previousStatus: order.status };
+        }
 
-      // 3. Update the order status and create a status history record if the status is different
-      const updatedOrder = await tx.order.update({
-        where: { id: orderId },
-        data: {
-          status,
-          statusHistory: {
-            create: {
-              status,
-              note: note || `Status changed to ${status}`,
-              changedBy,
+        const updatedOrderResult = await tx.order.update({
+          where: { id: orderId },
+          data: {
+            status,
+            statusHistory: {
+              create: {
+                status,
+                note: note || `Status changed to ${status}`,
+                changedBy,
+              },
             },
           },
-        },
-        include: {
-          items: true,
-          statusHistory: true,
-        },
-      });
+          include: { items: true, statusHistory: true },
+        });
 
-      return updatedOrder;
-    });
+        return {
+          updatedOrder: updatedOrderResult,
+          previousStatus: order.status,
+        };
+      },
+    );
+
+    const payload = {
+      orderId: updatedOrder.id,
+      orderNumber: updatedOrder.orderNumber,
+      items: this.transformOrderItems(updatedOrder.items, warehouseId),
+    };
+
+    // 2. Trigger event ONLY when transitioning from PENDING to CONFIRMED
+    if (previousStatus === "PENDING" && status === "CONFIRMED") {
+      await this.eventBus.publish("ORDER_CONFIRMED", payload);
+    }
+
+    return updatedOrder;
   }
 }

@@ -30,9 +30,16 @@ export class OrderRoutes extends BaseRoutes<OrderController> {
 
     this.router.patch(
       "/:id/status",
-      this.validateService.allow(["gateway"]),
+      this.validateService.allow(["gateway", "inventory"]),
       this.validateRequest(OrderValidators.updateOrderStatus),
       this.controller.updateOrderStatus,
+    );
+
+    this.router.post(
+      "/:id/repay",
+      this.validateService.allow(["gateway"]),
+      this.validateRequest(OrderValidators.repayOrder),
+      this.controller.repayOrder,
     );
   }
 }

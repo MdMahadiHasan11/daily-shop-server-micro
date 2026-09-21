@@ -115,7 +115,7 @@ export async function bootstrapListeners(): Promise<void> {
     async (event: any) => {
       try {
         const rawData = event?.payload?.payload || event?.payload || event;
-        const { orderId, orderNumber, items } = rawData;
+        const { orderId, orderNumber, items, userId } = rawData;
 
         if (!orderId || !items || !Array.isArray(items) || items.length === 0) {
           logger.error(
@@ -123,19 +123,6 @@ export async function bootstrapListeners(): Promise<void> {
           );
           return;
         }
-
-        // Check in the database via repository/service if the order is already Paid or Approved/Confirmed.
-        // If it is already paid or approved, do NOT release the stock because permanent deduction will handle or has handled it.
-        /*
-        const order = await orderRepository.findById(orderId);
-        if (!order || order.paymentStatus === 'PAID' || order.status === 'APPROVED' || order.status === 'CONFIRMED') {
-          logger.info(
-            { orderId, orderNumber },
-            "Order is already paid or approved. Skipping stock release on timeout. 👍",
-          );
-          return;
-        }
-        */
 
         const stockLevelService = new StockLevelService();
         await stockLevelService.releaseStockForOrder({
@@ -164,7 +151,7 @@ export async function bootstrapListeners(): Promise<void> {
   //       items: items,
   //     });
   await eventBus.subscribe(
-    "ORDER_PAYMENT_SUCCESS",
+    "ORDER_CONFIRMED",
     async (event: any) => {
       try {
         const rawData = event?.payload?.payload || event?.payload || event;
@@ -172,7 +159,7 @@ export async function bootstrapListeners(): Promise<void> {
 
         if (!orderId || !items || !Array.isArray(items) || items.length === 0) {
           logger.error(
-            "Order ID or items data is missing/invalid in ORDER_PAYMENT_SUCCESS event payload!",
+            "Order ID or items data is missing/invalid  event payload!",
           );
           return;
         }

@@ -101,4 +101,28 @@ export const microserviceClient = {
       );
     }
   },
+
+  patch: async <T = any>(
+    serviceName: string,
+    endpoint: string,
+    data?: any,
+    meta?: Partial<IMetaData>,
+    config?: AxiosRequestConfig,
+  ): Promise<T> => {
+    try {
+      const baseUrl = getServiceUrl(serviceName);
+      const finalConfig = createRequestConfig(meta, config);
+      const response = await axios.patch(
+        `${baseUrl}${endpoint}`,
+        data,
+        finalConfig,
+      );
+      return response.data;
+    } catch (error) {
+      return handleAxiosError(
+        error,
+        `Failed to communicate with ${serviceName} service`,
+      );
+    }
+  },
 };

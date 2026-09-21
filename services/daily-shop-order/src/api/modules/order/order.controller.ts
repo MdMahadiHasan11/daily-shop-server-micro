@@ -54,4 +54,15 @@ export class OrderController extends BaseController {
       message: "Order status updated successfully",
     });
   });
+
+  repayOrder = this.asyncHandler(async (req: Request, res: Response) => {
+    const metaData = this.getReqMetadata(req) as IMetaData;
+    const orderId = req.validatedBody.params.id as string;
+
+    const result = await this.service.repayOrder(orderId, metaData);
+
+    return this.successResponse(res, result, 200, {
+      message: "Stock reserved successfully. Proceed to payment.",
+    });
+  });
 }
