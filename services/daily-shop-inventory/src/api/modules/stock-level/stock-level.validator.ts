@@ -47,7 +47,22 @@ export class StockLevelValidators extends BaseValidator {
       productVariantId: z.string().uuid("Invalid Product Variant ID format"),
     }),
   });
+
+  static listStockExpired = z.object({
+    query: this.pagination(["warehouseId", "productVariantId"]).safeExtend({
+      warehouseId: z.string().uuid("Invalid Warehouse ID format").optional(),
+      productVariantId: z
+        .string()
+        .uuid("Invalid Product Variant ID format")
+        .optional(),
+    }),
+  });
 }
 
-export type StockCheck = z.infer<typeof StockLevelValidators.getStockCheckSchema>;
+export type StockCheck = z.infer<
+  typeof StockLevelValidators.getStockCheckSchema
+>;
 
+export type StockExpired = z.infer<
+  typeof StockLevelValidators.listStockExpired
+>;

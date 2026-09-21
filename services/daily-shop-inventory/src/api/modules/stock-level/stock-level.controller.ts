@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { BaseController } from "../../../core/base/base.controller";
 import { StockLevelService } from "./stock-level.service";
-import { StockCheck } from "./stock-level.validator";
+import { StockCheck, StockExpired } from "./stock-level.validator";
 
 export class StockLevelController extends BaseController {
   private service: StockLevelService;
@@ -69,4 +69,13 @@ export class StockLevelController extends BaseController {
       });
     },
   );
+
+  getStockExpired = this.asyncHandler(async (req: Request, res: Response) => {
+    const query = req.validatedBody.query as StockExpired["query"];
+    const result = await this.service.getStockExpired(query);
+    return this.successResponse(res, result.data, 200, {
+      message: "Stock details fetched successfully",
+      pagination: result.pagination,
+    });
+  });
 }

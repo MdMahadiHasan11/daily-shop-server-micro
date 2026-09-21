@@ -2,6 +2,7 @@ import { ProductSyncService } from "../api/modules/product-sync/product-sync.ser
 import { StockLevelService } from "../api/modules/stock-level/stock-level.service";
 
 import { eventBus } from "../core/services/event-bus-rabit.service";
+import { expiredBatchCron } from "../core/services/expired-batch.cron";
 import { redisSubscriberService } from "../core/services/redis-subscriber.service";
 import { logger } from "../core/utils/logger.utils";
 
@@ -185,5 +186,10 @@ export async function bootstrapListeners(): Promise<void> {
       }
     },
     "inventory_service_payment_success_group",
+  );
+
+  expiredBatchCron.start();
+  logger.info(
+    "🚀 All background listeners and cron jobs initialized successfully!",
   );
 }

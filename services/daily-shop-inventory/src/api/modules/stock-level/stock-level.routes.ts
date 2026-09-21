@@ -47,6 +47,13 @@ export class StockLevelRoutes extends BaseRoutes<StockLevelController> {
     );
 
     this.router.get(
+      "/stock/batch/expired",
+      this.validateService.allow(["gateway", "cart", "order"]),
+      this.validateRequest(StockLevelValidators.listStockExpired),
+      this.controller.getStockExpired,
+    );
+
+    this.router.get(
       "/stock/:productVariantId",
       this.validateService.allow(["gateway", "cart", "order"]),
       this.validateRequest(StockLevelValidators.getStockCheckSchema),

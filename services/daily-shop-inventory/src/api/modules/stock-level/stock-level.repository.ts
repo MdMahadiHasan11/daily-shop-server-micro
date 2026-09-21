@@ -85,7 +85,7 @@ export class StockLevelRepository extends BaseRepository<"stockLevel"> {
   async OrderStatusUpdate(orderId: string) {
     try {
       await this.service.patch("order", `/${orderId}/status`, {
-        status: "CANCELLED",
+        status: "CAN CELLED",
         note: "Stock released due to order timeout/cancellation",
       });
 

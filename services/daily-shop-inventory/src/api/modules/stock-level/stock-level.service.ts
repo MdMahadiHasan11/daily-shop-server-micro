@@ -567,4 +567,22 @@ export class StockLevelService extends BaseService {
       throw error;
     }
   }
+
+  async getStockExpired(query: any) {
+    try {
+      return await this.repository.getList(query, {
+        include: {
+          warehouse: true,
+          productVariant: true,
+        },
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      this._handleError(error, "getStockExpired", { query });
+      throw error;
+    }
+  }
 }
