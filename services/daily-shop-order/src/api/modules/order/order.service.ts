@@ -1,3 +1,4 @@
+import { PaymentStatus } from "@prisma/client";
 import { PaginationResult } from "../../../common/interfaces";
 import { BaseService } from "../../../core/base/base.service";
 import { env } from "../../../core/config/env.config";
@@ -104,6 +105,7 @@ export class OrderService extends BaseService {
     status: any,
     note: string | null | undefined,
     userId: string,
+    paymentStatus?: PaymentStatus,
   ): Promise<any> {
     try {
       return await this.repository.updateOrderStatus(
@@ -111,6 +113,7 @@ export class OrderService extends BaseService {
         status,
         note,
         userId,
+        paymentStatus
       );
     } catch (error) {
       this._handleError(error, "updateOrderStatus", { orderId, status });

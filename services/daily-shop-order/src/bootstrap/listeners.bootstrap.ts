@@ -17,8 +17,14 @@ export async function bootstrapListeners(): Promise<void> {
     async (event: any) => {
       try {
         const rawData = event?.payload?.payload || event?.payload || event;
-        const { orderId, status, note, userId } = rawData;
-
+        const { orderId, userId, status, note, paymentStatus } = rawData;
+        const payload = {
+          orderId,
+          userId,
+          status,
+          note,
+          paymentStatus,
+        };
         if (!orderId || !status) {
           logger.error("Order ID  is missing/invalid  event payload!");
           return;
@@ -26,11 +32,13 @@ export async function bootstrapListeners(): Promise<void> {
 
         const orderService = new OrderService();
 
+       
         await orderService.updateOrderStatus(
           orderId,
           status,
           note,
           userId as string,
+          paymentStatus,
         );
 
         logger.info(

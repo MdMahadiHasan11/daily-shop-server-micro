@@ -131,28 +131,6 @@ export class SSLRepository extends BaseRepository<"payment"> {
 
       return payment;
     });
-
-    // 5. Communicate with the separate Order Microservice to update the order status
-    const orderId = existingPayment.orderId;
-    // if (orderId) {
-    //   const order = await this.getOrderFromService(orderId);
-    //   if (order) {
-    //     await this.updateOrderInService(orderId, "PAID", transactionId);
-    //   }
-    // }
-
-
-     const { orderId, status, note, userId } = rawData;
-    // 2. Trigger event ONLY when transitioning from PENDING to CONFIRMED
-    if (previousStatus === "PENDING" && status === "CONFIRMED") {
-      await this.eventBus.publish(
-        "PAYMENT_CONFIRMED_FOR_ORDER_SERVICE",
-        payload,
-      );
-    }
-
-    // TODO: Add extra notification triggers, wallet credits, or webhook dispatches if required
-
     return updatedPayment;
   }
 }

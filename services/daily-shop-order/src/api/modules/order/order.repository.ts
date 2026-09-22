@@ -1,3 +1,4 @@
+import { PaymentStatus } from "@prisma/client";
 import { PaginationResult } from "../../../common/interfaces";
 import { BaseRepository } from "../../../core/base/base.repository";
 import { AppError } from "../../../core/errors/errors";
@@ -204,7 +205,7 @@ export class OrderRepository extends BaseRepository<"order"> {
     status: any,
     note: string | null | undefined,
     changedBy: string,
-    warehouseId?: string,
+    paymentStatus?: PaymentStatus,
   ) {
     // 1. Transaction block for database operations
     const { updatedOrder, previousStatus } = await this.transaction(
@@ -232,6 +233,7 @@ export class OrderRepository extends BaseRepository<"order"> {
           where: { id: orderId },
           data: {
             status,
+            ...(paymentStatus !== undefined && { paymentStatus }),
             statusHistory: {
               create: {
                 status,
@@ -253,7 +255,7 @@ export class OrderRepository extends BaseRepository<"order"> {
     const payload = {
       orderId: updatedOrder.id,
       orderNumber: updatedOrder.orderNumber,
-      items: this.transformOrderItems(updatedOrder.items, warehouseId),
+      items: this.transformOrderItems(updatedOrder.items),
     };
 
     // 2. Trigger event ONLY when transitioning from PENDING to CONFIRMED
