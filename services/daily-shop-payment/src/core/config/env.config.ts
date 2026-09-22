@@ -31,19 +31,29 @@ export const env = cleanEnv(process.env, {
   QUEUE_URL: url({ default: "" }),
 
   SESSION_TTL_SECONDS: num({ default: 604800 }),
-  STOCK_TIMEOUT: num({ default: 300000 }),
 
   EMAIL_SECRET: str(),
   GATEWAY_SECRET: str(),
-  PRODUCT_INTERNAL_SECRET: str(),
+  PRODUCT_SECRET: str(),
   CART_SECRET: str(),
-
-  INVENTORY_SERVICE_URL: str(),
+  ORDER_SECRET: str(),
+  INVENTORY_INTERNAL_SECRET: str(),
   PRODUCT_SERVICE_URL: str(),
-  ORDER_INTERNAL_SECRET: str(),
+  ORDER_SERVICE_URL: str(),
+  PAYMENT_INTERNAL_SECRET: str(),
 
-  INVENTORY_SECRET: str(),
-  PAYMENT_SECRET: str(),
+  SSL_STORE_ID: str(),
+  SSL_STORE_PASS: str(),
+  SSL_SUCCESS_BACKEND_URL: url(),
+  SSL_FAIL_BACKEND_URL: url(),
+  SSL_CANCEL_BACKEND_URL: url(),
+  SSL_IPN_URL: url(),
+  SSL_PAYMENT_API: url(),
+  SSL_VALIDATION_API: url(),
+
+  SSL_SUCCESS_FRONTEND_URL: url(),
+  SSL_FAIL_FRONTEND_URL: url(),
+  SSL_CANCEL_FRONTEND_URL: url(),
 });
 
 export type Env = typeof env;

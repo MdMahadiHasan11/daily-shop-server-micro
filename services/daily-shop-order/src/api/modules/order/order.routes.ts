@@ -17,7 +17,7 @@ export class OrderRoutes extends BaseRoutes<OrderController> {
 
     this.router.get(
       "/:id",
-      this.validateService.allow(["gateway", "inventory"]),
+      this.validateService.allow(["gateway", "inventory", "payment"]),
       this.controller.getOrderById,
     );
 

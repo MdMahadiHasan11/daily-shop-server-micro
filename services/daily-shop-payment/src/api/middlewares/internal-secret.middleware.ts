@@ -8,18 +8,18 @@ export class authenticate {
       | "auth"
       | "user"
       | "email"
+      | "product"
       | "cart"
-      | "inventory"
-      | "payment"
+      | "order"
     )[],
   ) {
     return (req: Request, res: Response, next: NextFunction) => {
       const secretMap: Record<string, string | undefined> = {
         gateway: env.GATEWAY_SECRET,
         email: env.EMAIL_SECRET,
+        product: env.PRODUCT_SECRET,
         cart: env.CART_SECRET,
-        inventory: env.INVENTORY_SECRET,
-        payment: env.PAYMENT_SECRET,
+        order: env.ORDER_SECRET,
       };
 
       // Map service names to their expected header keys
@@ -28,9 +28,9 @@ export class authenticate {
         auth: "x-auth-secret",
         user: "x-user-secret",
         email: "x-email-secret",
+        product: "x-product-secret",
         cart: "x-cart-secret",
-        inventory: "x-inventory-secret",
-        payment: "x-payment-secret",
+        order: "x-order-secret",
       };
 
       const isAuthorized = allowedServices.some((service) => {
@@ -38,7 +38,6 @@ export class authenticate {
         const headerName = headerMap[service];
 
         const clientSecret = req.headers[headerName];
-
         return (
           expectedSecret && clientSecret && clientSecret === expectedSecret
         );

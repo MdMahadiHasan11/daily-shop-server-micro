@@ -1,0 +1,176 @@
+// ==========================================
+// PAYMENT SERVICE ENUMS
+// ==========================================
+
+enum PaymentMethod {
+  COD
+  ONLINE
+  WALLET
+}
+
+enum PaymentGateway {
+  SSLCOMMERZ
+  BKASH
+  STRIPE
+  WALLET
+  COD
+  CUSTOM
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum RefundStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum WalletTransactionType {
+  CREDIT // Money added (Top-up, Refund)
+  DEBIT // Money deducted (Checkout payment, Withdrawal)
+}
+
+// ==========================================
+// 1. PAYMENT MODEL (Main Transactions Table)
+// ==========================================
+model Payment {
+  id            String @id @default(uuid())
+  paymentNumber String @unique
+  orderId       String
+  userId        String
+
+  amount   Float
+  currency String @default("BDT")
+
+  method               PaymentMethod // COD, ONLINE, WALLET
+  gateway              PaymentGateway? // SSLCOMMERZ, BKASH, STRIPE, etc.
+  gatewayTransactionId String?         @unique // Transaction ID returned by gateway (e.g., SSLCommerz Tran_ID or Stripe PaymentIntent ID)
+  gatewayApprovalCode  String? // Authorization code if provided by gateway
+
+  status PaymentStatus @default(PENDING)
+
+  // JSON payload stores raw request/response from the gateway for auditing and debugging
+  gatewayResponse Json?
+
+  paidAt DateTime? // Timestamp when payment successfully completed
+
+  // Admin / System audit fields
+  notes     String? @db.Text
+  updatedBy String? // Admin ID who manually updated the status (if applicable)
+
+  // Relations
+  refunds Refund[]
+  logs    PaymentGatewayLog[]
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+  @@index([gatewayTransactionId])
+  @@map("payments")
+}
+
+// ==========================================
+// 2. USER WALLET MODEL
+// ==========================================
+model Wallet {
+  id       String  @id @default(uuid())
+  userId   String  @unique // References User from User Service
+  balance  Float   @default(0.0)
+  currency String  @default("BDT")
+  isActive Boolean @default(true)
+
+  // Relations
+  transactions WalletTransaction[]
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("wallets")
+}
+
+// ==========================================
+// 3. WALLET TRANSACTION LEDGER MODEL
+// ==========================================
+model WalletTransaction {
+  id       String @id @default(uuid())
+  walletId String
+  wallet   Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  type          WalletTransactionType // CREDIT or DEBIT
+  amount        Float
+  balanceBefore Float
+  balanceAfter  Float
+
+  referenceId String? // Order ID or Payment ID associated with this transaction
+  note        String? @db.Text
+  createdBy   String? // User ID or Admin ID who triggered it
+
+  createdAt DateTime @default(now())
+
+  @@index([walletId])
+  @@index([referenceId])
+  @@map("wallet_transactions")
+}
+
+// ==========================================
+// 4. REFUND MODEL
+// ==========================================
+model Refund {
+  id           String  @id @default(uuid())
+  refundNumber String  @unique // e.g., REF-20260606-XXXX
+  paymentId    String
+  payment      Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  orderId      String // References Order from Order Service
+
+  amount Float
+  reason String?      @db.Text
+  status RefundStatus @default(PENDING)
+
+  gatewayRefundId String? // ID returned by gateway if refund processed online
+  gatewayResponse Json? // Raw response from gateway for refund
+
+  processedBy String? // Admin ID who approved/processed the refund
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([paymentId])
+  @@index([orderId])
+  @@index([status])
+  @@map("refunds")
+}
+
+// ==========================================
+// 5. PAYMENT GATEWAY WEBHOOK & API LOGS
+// ==========================================
+model PaymentGatewayLog {
+  id        String   @id @default(uuid())
+  paymentId String?
+  payment   Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  gateway  PaymentGateway
+  event    String? // e.g., "payment.success", "ipn.validated", "charge.refunded"
+  payload  Json // Full request payload received from webhook/IPN
+  response Json? // System's response back to the gateway
+
+  createdAt DateTime @default(now())
+
+  @@index([paymentId])
+  @@index([gateway])
+  @@map("payment_gateway_logs")
+}

@@ -1,3 +1,5 @@
+import { OrderService } from "../api/modules/order/order.service";
+import { eventBus } from "../core/services/event-bus-rabit.service";
 import { redisSubscriberService } from "../core/services/redis-subscriber.service";
 import { logger } from "../core/utils/logger.utils";
 
@@ -10,19 +12,41 @@ interface LoginInitiate {
 }
 
 export async function bootstrapListeners(): Promise<void> {
-  // 2. Register OTP Expiration Event Handler
-  redisSubscriberService.onKeyExpired("otp", (fullKey, keyParts) => {
-    // Expected key format: otp:<identifier>
-    const identifier = keyParts;
-    logger.info(`redis key expired: ${fullKey}`);
-  });
+  await eventBus.subscribe(
+    "PAYMENT_CONFIRMED_FOR_ORDER_SERVICE",
+    async (event: any) => {
+      try {
+        const rawData = event?.payload?.payload || event?.payload || event;
+        const { orderId, status, note, userId } = rawData;
 
-  redisSubscriberService.onKeyExpired("forgot", (fullKey, keyParts) => {
-    const email = keyParts[1];
-    logger.info(
-      `[Auth Listener] Password reset token/OTP expired for email: ${email}`,
-    );
-  });
+        if (!orderId || !status) {
+          logger.error("Order ID  is missing/invalid  event payload!");
+          return;
+        }
+
+        const orderService = new OrderService();
+
+        await orderService.updateOrderStatus(
+          orderId,
+          status,
+          note,
+          userId as string,
+        );
+
+        logger.info(
+          { orderId, userId },
+          "After Successful Payment Reserved stock successfully deducted permanently due to successful payment 💳📦",
+        );
+      } catch (error: any) {
+        logger.error(
+          { error: error?.message, eventPayload: event },
+          "Failed to deduct stock permanently for the paid order from event queue ❌",
+        );
+        throw error;
+      }
+    },
+    "inventory_service_payment_success_group_call_from_payment_service",
+  );
 
   await redisSubscriberService.start();
 }
