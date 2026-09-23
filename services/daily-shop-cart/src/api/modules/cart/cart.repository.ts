@@ -17,11 +17,9 @@ export class CartRepository extends BaseRepository<"cart"> {
 
   async getVariantDetails(variantIds: string[]): Promise<any[]> {
     try {
-      const response = await this.service.post(
-        "product",
-        "/product/variants/bulk",
-        { variantIds },
-      );
+      const response = await this.service.post("product", "/variants/bulk", {
+        variantIds,
+      });
       return response.data || [];
     } catch (err) {
       console.error(

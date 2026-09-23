@@ -118,11 +118,25 @@ export class ProductRepository extends BaseRepository<"product"> {
         publishError?.message,
       );
 
-      // If event publishing fails, soft-delete the product record to maintain data consistency
-      await this.model.update({
-        where: { id: productResult.id },
-        data: { isDeleted: true },
-      });
+      // 🛑 Hard Delete: If event publishing fails, completely wipe out the product and its relations
+      try {
+        await this.transaction(async (tx) => {
+          await tx.productTag.deleteMany({
+            where: { productId: productResult.id },
+          });
+          await tx.productVariant.deleteMany({
+            where: { productId: productResult.id },
+          });
+          await tx.product.delete({
+            where: { id: productResult.id },
+          });
+        });
+      } catch (cleanupError: any) {
+        console.error(
+          `Failed to hard delete product ID ${productResult.id} during rollback:`,
+          cleanupError?.message,
+        );
+      }
 
       throw new AppError(
         `Failed to initialize inventory for product: ${productResult.name}. Operation aborted.`,

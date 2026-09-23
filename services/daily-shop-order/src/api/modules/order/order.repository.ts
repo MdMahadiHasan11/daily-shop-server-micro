@@ -95,7 +95,7 @@ export class OrderRepository extends BaseRepository<"order"> {
 
     const productResponse = await this.service.post(
       "product",
-      "/product/variants/bulk",
+      "/variants/bulk",
       {
         variantIds,
       },
