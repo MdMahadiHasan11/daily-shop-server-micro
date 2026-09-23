@@ -44,4 +44,15 @@ export class WarehouseValidators extends BaseValidator {
       }),
     }),
   });
+
+  static StockOperation = z.object({
+    body: z.object({
+      variantIds: z
+        .array(z.string().uuid("Invalid UUID format"))
+        .min(1, "At least one variant ID is required"),
+      customerCity: z.string().min(1, "Customer city is required"),
+    }),
+  });
 }
+
+export type StockOperation = z.infer<typeof WarehouseValidators.StockOperation>;

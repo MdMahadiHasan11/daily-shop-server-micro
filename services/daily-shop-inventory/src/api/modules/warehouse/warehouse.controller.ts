@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { BaseController } from "../../../core/base/base.controller";
 import { WarehouseService } from "./warehouse.service";
+import { StockOperation } from "./warehouse.validator";
 
 export class WarehouseController extends BaseController {
   private service: WarehouseService;
@@ -14,9 +15,9 @@ export class WarehouseController extends BaseController {
     const query = req.validatedBody?.query || req.query;
     const result = await this.service.getAllWarehouses(query);
     return this.successResponse(res, result.data || result, 200, {
-      message:"All warehouse get successfully.",
+      message: "All warehouse get successfully.",
       pagination: result.pagination,
-      query:query
+      query: query,
     });
   });
 
@@ -43,13 +44,15 @@ export class WarehouseController extends BaseController {
     });
   });
 
-  softDeleteWarehouse = this.asyncHandler(async (req: Request, res: Response) => {
-    const id = req.validatedBody?.params?.id || req.params.id;
-    const result = await this.service.softDeleteWarehouse(id);
-    return this.successResponse(res, result, 200, {
-      message: "Warehouse soft deleted successfully",
-    });
-  });
+  softDeleteWarehouse = this.asyncHandler(
+    async (req: Request, res: Response) => {
+      const id = req.validatedBody?.params?.id || req.params.id;
+      const result = await this.service.softDeleteWarehouse(id);
+      return this.successResponse(res, result, 200, {
+        message: "Warehouse soft deleted successfully",
+      });
+    },
+  );
 
   restoreWarehouse = this.asyncHandler(async (req: Request, res: Response) => {
     const id = req.validatedBody?.params?.id || req.params.id;
@@ -59,17 +62,27 @@ export class WarehouseController extends BaseController {
     });
   });
 
-  hardDeleteWarehouse = this.asyncHandler(async (req: Request, res: Response) => {
-    const id = req.validatedBody?.params?.id || req.params.id;
-    const result = await this.service.hardDeleteWarehouse(id);
-    return this.successResponse(res, result, 200, {
-      message: "Warehouse permanently deleted successfully",
-    });
-  });
+  hardDeleteWarehouse = this.asyncHandler(
+    async (req: Request, res: Response) => {
+      const id = req.validatedBody?.params?.id || req.params.id;
+      const result = await this.service.hardDeleteWarehouse(id);
+      return this.successResponse(res, result, 200, {
+        message: "Warehouse permanently deleted successfully",
+      });
+    },
+  );
 
   bulkOperation = this.asyncHandler(async (req: Request, res: Response) => {
     const payload = req.validatedBody?.body || req.body;
     const result = await this.service.handleBulkOperation(payload);
+    return this.successResponse(res, result, 200, {
+      message: "Bulk operation executed successfully",
+    });
+  });
+
+  getBranchesStock = this.asyncHandler(async (req: Request, res: Response) => {
+    const payload = req.validatedBody?.body as StockOperation["body"];
+    const result = await this.service.getBranchesStock(payload);
     return this.successResponse(res, result, 200, {
       message: "Bulk operation executed successfully",
     });

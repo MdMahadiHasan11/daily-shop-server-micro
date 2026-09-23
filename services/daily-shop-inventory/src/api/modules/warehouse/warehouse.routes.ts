@@ -16,6 +16,13 @@ export class WarehouseRoutes extends BaseRoutes<WarehouseController> {
       this.controller.bulkOperation,
     );
 
+    this.router.post(
+      "/stock",
+      this.validateService.allow(["gateway"]),
+      this.validateRequest(WarehouseValidators.StockOperation),
+      this.controller.getBranchesStock,
+    );
+
     // Get all warehouses
     this.router.get(
       "/",
