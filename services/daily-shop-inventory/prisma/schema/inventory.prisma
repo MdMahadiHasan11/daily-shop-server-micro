@@ -4,6 +4,12 @@ enum ProductStatus {
   ARCHIVED
 }
 
+enum VariantStrategy {
+  FEFO_FIRST
+  COST_FIRST
+  CENTRAL_HUB_FIRST
+}
+
 enum StockTransactionType {
   STOCK_IN
   STOCK_OUT
@@ -32,10 +38,11 @@ enum TransferStatus {
 // 1. PRODUCT VARIANT (Required for Inventory Relations)
 // ==========================================
 model ProductVariant {
-  id            String   @id @default(uuid())
+  id            String          @id @default(uuid())
   productId     String
-  sku           String   @unique
-  barcode       String?  @unique
+  sku           String          @unique
+  barcode       String?         @unique
+  strategy      VariantStrategy @default(FEFO_FIRST)
   name          String
   price         Float
   discountPrice Float?
@@ -44,10 +51,10 @@ model ProductVariant {
   weightValue   Float?
   attributes    Json?
   images        String[]
-  isDefault     Boolean  @default(false)
-  isDeleted     Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isDefault     Boolean         @default(false)
+  isDeleted     Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   // Inventory Relations
   stocks              StockLevel[]
