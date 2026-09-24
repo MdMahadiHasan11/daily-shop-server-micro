@@ -209,6 +209,9 @@ export class WarehouseService extends BaseService {
               productVariantId: { in: payload.variantIds },
               isDeleted: false,
             },
+            include: {
+              productVariant: true,
+            },
           },
           stockBatches: {
             where: {
@@ -229,7 +232,11 @@ export class WarehouseService extends BaseService {
 
         const variantsObj: Record<
           string,
-          { stock: number; expiryDate?: Date }
+          {
+            stock: number;
+            expiryDate?: Date;
+            strategy?: string;
+          }
         > = {};
 
         for (const variantId of payload.variantIds) {
@@ -246,11 +253,14 @@ export class WarehouseService extends BaseService {
               (b) => b.productVariantId === variantId,
             );
 
+            const variantDetails = stockLevel?.productVariant;
+
             variantsObj[variantId] = {
               stock: totalStock,
               expiryDate: firstBatch?.expiryDate
                 ? new Date(firstBatch.expiryDate)
                 : undefined,
+              strategy: variantDetails?.strategy || "FEFO_FIRST",
             };
           }
         }

@@ -31,6 +31,20 @@ export class StockLevelRoutes extends BaseRoutes<StockLevelController> {
       this.controller.getAllStockLevels,
     );
 
+    this.router.post(
+      "/hold",
+      this.validateService.allow(["gateway", "order"]),
+      this.validateRequest(StockLevelValidators.allocationPlanStockHold),
+      this.controller.holdStockForOrder,
+    );
+
+    this.router.post(
+      "/release",
+      this.validateService.allow(["gateway"]),
+      this.validateRequest(StockLevelValidators.allocationPlanStockHold),
+      this.controller.releaseStockForOrder,
+    );
+
     // Get single stock level by ID
     this.router.get(
       "/:id",

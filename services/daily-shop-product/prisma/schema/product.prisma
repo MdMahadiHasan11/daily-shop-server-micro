@@ -4,6 +4,12 @@ enum ProductStatus {
   ARCHIVED
 }
 
+enum VariantStrategy {
+  FEFO_FIRST
+  COST_FIRST
+  CENTRAL_HUB_FIRST
+}
+
 model Category {
   id          String     @id @default(uuid())
   name        String
@@ -84,6 +90,8 @@ model ProductVariant {
   id        String  @id @default(uuid())
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  strategy VariantStrategy @default(FEFO_FIRST)
 
   sku     String  @unique
   barcode String? @unique

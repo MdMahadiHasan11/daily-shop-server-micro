@@ -205,37 +205,48 @@ export class StockLevelService extends BaseService {
 
   async holdStockForOrder(data: {
     orderId: string;
-    items: Array<{
-      productVariantId: string;
-      quantity: number;
-      warehouseId?: string;
+    orderNumber: string;
+    allocationPlan: Array<{
+      branchId: string;
+      variantId: string;
+      allocatedQty: number;
     }>;
   }) {
-    const { orderId, items } = data;
+    const { orderId, orderNumber, allocationPlan } = data;
 
     try {
       const result = await this.db.$transaction(async (tx: any) => {
         const updatedStockLevels = [];
 
-        for (const item of items) {
-          const { productVariantId, quantity, warehouseId } = item;
+        for (const item of allocationPlan) {
+          const { variantId, branchId, allocatedQty } = item;
+          const warehouseId = branchId;
 
-          let stockLevelQuery: any = {
-            productVariantId: productVariantId,
-            isDeleted: false,
-          };
-
-          if (warehouseId) {
-            stockLevelQuery.warehouseId = warehouseId;
-          }
-
-          const potentialStockLevels = await tx.stockLevel.findMany({
-            where: stockLevelQuery,
+          const stockLevelRecord = await tx.stockLevel.findFirst({
+            where: {
+              productVariantId: variantId,
+              warehouseId: warehouseId,
+              isDeleted: false,
+            },
           });
 
-          if (!potentialStockLevels || potentialStockLevels.length === 0) {
+          if (!stockLevelRecord) {
             throw new AppError(
-              `No stock record found for variant ${productVariantId}`,
+              `Stock level record not found for variant ${variantId} in warehouse ${warehouseId}`,
+              404,
+              true,
+              undefined,
+              "STOCK_RECORD_NOT_FOUND",
+            );
+          }
+
+          // (Total Quantity - Reserved Quantity)
+          const availableStock =
+            stockLevelRecord.quantity - stockLevelRecord.reservedQuantity;
+
+          if (availableStock < allocatedQty) {
+            throw new AppError(
+              `Insufficient available stock for variant ${variantId} in warehouse ${warehouseId}. Required: ${allocatedQty}, Available: ${availableStock}`,
               400,
               true,
               undefined,
@@ -243,57 +254,27 @@ export class StockLevelService extends BaseService {
             );
           }
 
-          let targetWarehouseId: string | null = null;
-          let targetBatches: any[] = [];
+          // FEFO
+          const batches = await tx.stockBatch.findMany({
+            where: {
+              productVariantId: variantId,
+              warehouseId: warehouseId,
+              status: "ACTIVE",
+              isDeleted: false,
+            },
+            orderBy: {
+              expiryDate: "asc",
+            },
+          });
 
-          for (const stockLevel of potentialStockLevels) {
-            // Check available stock (Total Quantity - Reserved Quantity)
-            const availableStock =
-              stockLevel.quantity - stockLevel.reservedQuantity;
-            if (availableStock < quantity) continue;
+          let remainingToDeduct = allocatedQty;
 
-            const batches = await tx.StockBatch.findMany({
-              where: {
-                productVariantId: productVariantId,
-                warehouseId: stockLevel.warehouseId,
-                isDeleted: false,
-              },
-              orderBy: {
-                expiryDate: "asc",
-              },
-            });
-
-            // Calculate total available batch quantity
-            const totalAvailableBatchQty = batches.reduce(
-              (sum: number, b: any) =>
-                sum + (b.currentQuantity - (b.reservedQuantity || 0)),
-              0,
-            );
-
-            if (totalAvailableBatchQty >= quantity) {
-              targetWarehouseId = stockLevel.warehouseId;
-              targetBatches = batches;
-              break;
-            }
-          }
-
-          if (!targetWarehouseId || targetBatches.length === 0) {
-            throw new AppError(
-              `Insufficient available stock (considering reservations) for variant ${productVariantId}. Required: ${quantity}`,
-              400,
-              true,
-              undefined,
-              "INSUFFICIENT_BATCH_STOCK",
-            );
-          }
-
-          let remainingToDeduct = quantity;
-
-          for (const batch of targetBatches) {
+          for (const batch of batches) {
             if (remainingToDeduct <= 0) break;
 
             const batchAvailable =
               batch.currentQuantity - (batch.reservedQuantity || 0);
+
             if (batchAvailable <= 0) continue;
 
             const reserveFromBatch = Math.min(
@@ -301,7 +282,7 @@ export class StockLevelService extends BaseService {
               remainingToDeduct,
             );
 
-            await tx.StockBatch.update({
+            await tx.stockBatch.update({
               where: { id: batch.id },
               data: {
                 reservedQuantity: {
@@ -313,20 +294,13 @@ export class StockLevelService extends BaseService {
             remainingToDeduct -= reserveFromBatch;
           }
 
-          const stockLevelRecord = await tx.stockLevel.findFirst({
-            where: {
-              productVariantId: productVariantId,
-              warehouseId: targetWarehouseId,
-            },
-          });
-
-          if (!stockLevelRecord) {
+          if (remainingToDeduct > 0) {
             throw new AppError(
-              `StockLevel summary record not found for variant ${productVariantId} in warehouse ${targetWarehouseId}`,
-              404,
+              `Insufficient batch stock for variant ${variantId} in warehouse ${warehouseId}. Missing: ${remainingToDeduct}`,
+              400,
               true,
               undefined,
-              "STOCK_RECORD_NOT_FOUND",
+              "INSUFFICIENT_BATCH_STOCK",
             );
           }
 
@@ -334,16 +308,27 @@ export class StockLevelService extends BaseService {
             where: { id: stockLevelRecord.id },
             data: {
               reservedQuantity: {
-                increment: quantity,
+                increment: allocatedQty,
               },
+            },
+          });
+
+          await tx.stockTransaction.create({
+            data: {
+              warehouseId: warehouseId,
+              productVariantId: variantId,
+              type: "STOCK_OUT",
+              referenceId: orderId,
+              note: `Stock reserved for order: ${orderNumber}`,
+              quantity: allocatedQty,
             },
           });
 
           updatedStockLevels.push(updatedStockLevel);
         }
-
         return updatedStockLevels;
       });
+
       return result;
     } catch (error) {
       if (error instanceof AppError) {
@@ -356,101 +341,119 @@ export class StockLevelService extends BaseService {
 
   async releaseStockForOrder(data: {
     orderId: string;
-    items: Array<{
-      productVariantId: string;
-      quantity: number;
-      warehouseId?: string;
+    orderNumber?: string;
+    allocationPlan: Array<{
+      branchId: string;
+      variantId: string;
+      allocatedQty: number;
     }>;
   }) {
-    const { orderId, items } = data;
+    const { orderId, allocationPlan } = data;
 
     try {
+      // Step 1: Check if the order exists in the database
       const order = await this.repository.OrderCheck(orderId);
 
-      if (
-        order &&
-        (order.paymentStatus === "PAID" || order.status === "CONFIRMED")
-      ) {
+      // Step 2: If the order exists, check if it's already paid or confirmed.
+      // If it doesn't exist yet (failed during checkout creation), we skip this check and proceed to release stock.
+      if (order) {
+        if (order.paymentStatus === "PAID" || order.status === "CONFIRMED") {
+          logger.info(
+            { orderId },
+            "Order is already paid or approved. Skipping stock release inside releaseStockForOrder. 👍",
+          );
+          return;
+        }
+      } else {
         logger.info(
           { orderId },
-          "Order is already paid or approved. Skipping stock release inside releaseStockForOrder. 👍",
+          "Order record not found in DB (likely failed during checkout transaction). Proceeding with stock release. 🔄",
         );
-        return;
       }
 
+      // Step 3: Perform database transaction to decrement reserved quantities and update batches
       await this.db.$transaction(async (tx: any) => {
-        for (const item of items) {
-          const { productVariantId, quantity, warehouseId } = item;
+        for (const item of allocationPlan) {
+          const { branchId, variantId, allocatedQty } = item;
+          const warehouseId = branchId; // branchId is treated as warehouseId
 
-          let stockLevelQuery: any = {
-            productVariantId: productVariantId,
-            isDeleted: false,
-          };
-
-          if (warehouseId) {
-            stockLevelQuery.warehouseId = warehouseId;
-          }
-
-          const stockLevels = await tx.stockLevel.findMany({
-            where: stockLevelQuery,
+          const stockLevelRecord = await tx.stockLevel.findFirst({
+            where: {
+              productVariantId: variantId,
+              warehouseId: warehouseId,
+              isDeleted: false,
+            },
           });
 
-          if (!stockLevels || stockLevels.length === 0) continue;
+          if (!stockLevelRecord) continue;
 
-          for (const stockLevel of stockLevels) {
-            // Skip if there is no reserved stock in this warehouse
-            if (stockLevel.reservedQuantity <= 0) continue;
+          if (stockLevelRecord.reservedQuantity <= 0) continue;
 
-            const batches = await tx.StockBatch.findMany({
-              where: {
-                productVariantId: productVariantId,
-                warehouseId: stockLevel.warehouseId,
-                isDeleted: false,
-              },
-            });
+          const batches = await tx.stockBatch.findMany({
+            where: {
+              productVariantId: variantId,
+              warehouseId: warehouseId,
+              isDeleted: false,
+            },
+            orderBy: {
+              expiryDate: "asc",
+            },
+          });
 
-            let remainingToRelease = quantity;
+          let remainingToRelease = allocatedQty;
 
-            for (const batch of batches) {
-              if (remainingToRelease <= 0) break;
-              if (!batch.reservedQuantity || batch.reservedQuantity <= 0)
-                continue;
+          for (const batch of batches) {
+            if (remainingToRelease <= 0) break;
+            if (!batch.reservedQuantity || batch.reservedQuantity <= 0)
+              continue;
 
-              const releaseFromBatch = Math.min(
-                batch.reservedQuantity,
-                remainingToRelease,
-              );
-
-              // Decrement the reservedQuantity of the batch
-              await tx.StockBatch.update({
-                where: { id: batch.id },
-                data: {
-                  reservedQuantity: {
-                    decrement: releaseFromBatch,
-                  },
-                },
-              });
-
-              remainingToRelease -= releaseFromBatch;
-            }
-
-            const newReservedQty = Math.max(
-              0,
-              stockLevel.reservedQuantity - quantity,
+            const releaseFromBatch = Math.min(
+              batch.reservedQuantity,
+              remainingToRelease,
             );
 
-            await tx.stockLevel.update({
-              where: { id: stockLevel.id },
+            await tx.stockBatch.update({
+              where: { id: batch.id },
               data: {
-                reservedQuantity: newReservedQty,
+                reservedQuantity: {
+                  decrement: releaseFromBatch,
+                },
               },
             });
-            break;
+
+            remainingToRelease -= releaseFromBatch;
           }
+
+          const newReservedQty = Math.max(
+            0,
+            stockLevelRecord.reservedQuantity - allocatedQty,
+          );
+
+          await tx.stockLevel.update({
+            where: { id: stockLevelRecord.id },
+            data: {
+              reservedQuantity: newReservedQty,
+            },
+          });
+
+          await tx.stockTransaction.create({
+            data: {
+              warehouseId: warehouseId,
+              productVariantId: variantId,
+              type: "ADJUSTMENT",
+              quantity: allocatedQty,
+              referenceId: orderId,
+              note: `Stock released for order cancellation/expiry/creation failure: ${orderId}`,
+            },
+          });
         }
       });
 
-      await this.repository.OrderStatusUpdate(orderId);
+      // Step 4: Update order status only if the order actually exists in the database
+      if (order) {
+        await this.repository.OrderStatusUpdate(orderId);
+      }
+
       return;
     } catch (error) {
       if (error instanceof AppError) {
@@ -501,7 +504,6 @@ export class StockLevelService extends BaseService {
 
           for (const stockLevel of stockLevels) {
             if (stockLevel.reservedQuantity < quantity) {
-              // Note: If reserved quantity is less than required, handle accordingly
               continue;
             }
 
@@ -525,7 +527,6 @@ export class StockLevelService extends BaseService {
                 remainingToDeduct,
               );
 
-              // 1. Decrement both reservedQuantity and currentQuantity from StockBatch
               await tx.StockBatch.update({
                 where: { id: batch.id },
                 data: {
@@ -541,7 +542,6 @@ export class StockLevelService extends BaseService {
               remainingToDeduct -= deductFromBatch;
             }
 
-            // 2. Decrement both reservedQuantity and main quantity from StockLevel
             const newReservedQty = Math.max(
               0,
               stockLevel.reservedQuantity - quantity,

@@ -59,31 +59,28 @@ export class OrderService extends BaseService {
         items,
       );
 
-      if (order.paymentMethod === "ONLINE") {
-        await this.eventBus.publish("ORDER_STOCK_HOLD", {
-          orderId: order.id,
-          orderNumber: order.orderNumber,
-          items: items,
-        });
-
-        const FIVE_MINUTES_IN_MS = env.STOCK_TIMEOUT;
-
-        await this.eventBus.publishDelayed(
-          "ORDER_PAYMENT_TIMEOUT",
-          {
-            orderId: order.id,
-            orderNumber: order.orderNumber,
-            userId: metaData.id,
-            items: items,
-          },
-
-          FIVE_MINUTES_IN_MS,
-          {
-            correlationId: order.orderNumber,
-            origin: "order_service",
-            version: 1,
-          },
-        );
+      if (createData.paymentMethod === "ONLINE") {
+        // await this.eventBus.publish("ORDER_STOCK_HOLD", {
+        //   orderId: order.id,
+        //   orderNumber: order.orderNumber,
+        //   items: items,
+        // });
+        // const FIVE_MINUTES_IN_MS = env.STOCK_TIMEOUT;
+        // await this.eventBus.publishDelayed(
+        //   "ORDER_PAYMENT_TIMEOUT",
+        //   {
+        //     orderId: order.id,
+        //     orderNumber: order.orderNumber,
+        //     userId: metaData.id,
+        //     items: items,
+        //   },
+        //   FIVE_MINUTES_IN_MS,
+        //   {
+        //     correlationId: order.orderNumber,
+        //     origin: "order_service",
+        //     version: 1,
+        //   },
+        // );
       } else {
         // todo : here admin get notification then call user and confirm and update status .the stock reduces.
         // await this.eventBus.publish("ORDER_CREATED", {
@@ -113,7 +110,7 @@ export class OrderService extends BaseService {
         status,
         note,
         userId,
-        paymentStatus
+        paymentStatus,
       );
     } catch (error) {
       this._handleError(error, "updateOrderStatus", { orderId, status });

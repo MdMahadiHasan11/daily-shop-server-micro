@@ -7,6 +7,7 @@ import {
 import db from "../lib/prisma";
 import { microserviceClient } from "../services/axios.service";
 import { eventBus } from "../services/event-bus-rabit.service";
+import { redisService } from "../services/redis.service";
 
 function setNestedDateFilter(
   obj: any,
@@ -32,6 +33,7 @@ export abstract class BaseRepository<T extends keyof PrismaClient> {
   //   protected redis: typeof db.redis;
   protected service = microserviceClient;
   protected readonly eventBus = eventBus;
+  protected readonly cache = redisService;
 
   constructor(modelName: T) {
     this.prisma = db.prisma;

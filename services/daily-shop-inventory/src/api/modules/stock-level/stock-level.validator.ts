@@ -57,6 +57,25 @@ export class StockLevelValidators extends BaseValidator {
         .optional(),
     }),
   });
+
+  static allocationPlanItemSchema = z.object({
+    branchId: z.string().uuid("Invalid Branch ID format"),
+    variantId: z.string().uuid("Invalid Variant ID format"),
+    allocatedQty: z
+      .number()
+      .int()
+      .positive("Allocated quantity must be greater than 0"),
+  });
+
+  static allocationPlanStockHold = z.object({
+    body: z.object({
+      orderId: z.string().uuid("Invalid Order ID format"),
+      orderNumber: z.string().min(1, "Order number is required"),
+      allocationPlan: z
+        .array(this.allocationPlanItemSchema)
+        .min(1, "Allocation plan cannot be empty"),
+    }),
+  });
 }
 
 export type StockCheck = z.infer<
@@ -65,4 +84,8 @@ export type StockCheck = z.infer<
 
 export type StockExpired = z.infer<
   typeof StockLevelValidators.listStockExpired
+>;
+
+export type CreateAllocationPlan = z.infer<
+  typeof StockLevelValidators.allocationPlanStockHold
 >;

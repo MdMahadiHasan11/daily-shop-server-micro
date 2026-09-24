@@ -1,7 +1,11 @@
 import { Request, Response } from "express";
 import { BaseController } from "../../../core/base/base.controller";
 import { StockLevelService } from "./stock-level.service";
-import { StockCheck, StockExpired } from "./stock-level.validator";
+import {
+  CreateAllocationPlan,
+  StockCheck,
+  StockExpired,
+} from "./stock-level.validator";
 
 export class StockLevelController extends BaseController {
   private service: StockLevelService;
@@ -78,4 +82,22 @@ export class StockLevelController extends BaseController {
       pagination: result.pagination,
     });
   });
+
+  holdStockForOrder = this.asyncHandler(async (req: Request, res: Response) => {
+    const data = req.validatedBody?.body as CreateAllocationPlan["body"];
+    const result = await this.service.holdStockForOrder(data);
+    return this.successResponse(res, result, 200, {
+      message: "Stock holds successfully",
+    });
+  });
+
+  releaseStockForOrder = this.asyncHandler(
+    async (req: Request, res: Response) => {
+      const data = req.validatedBody?.body as CreateAllocationPlan["body"];
+      const result = await this.service.releaseStockForOrder(data);
+      return this.successResponse(res, result, 200, {
+        message: "Stock release successfully",
+      });
+    },
+  );
 }

@@ -1,4 +1,5 @@
 import { BaseRepository } from "../../../core/base/base.repository";
+import { AppError } from "../../../core/errors/errors";
 import { logger } from "../../../core/utils/logger.utils";
 
 export class StockLevelRepository extends BaseRepository<"stockLevel"> {
@@ -85,7 +86,7 @@ export class StockLevelRepository extends BaseRepository<"stockLevel"> {
   async OrderStatusUpdate(orderId: string) {
     try {
       await this.service.patch("order", `/${orderId}/status`, {
-        status: "CAN CELLED",
+        status: "CANCELLED",
         note: "Stock released due to order timeout/cancellation",
       });
 
@@ -93,14 +94,24 @@ export class StockLevelRepository extends BaseRepository<"stockLevel"> {
         { orderId },
         "Stock released successfully and order status updated to CANCELLED in Order Service. 🚀",
       );
-    } catch (orderUpdateErr) {
+    } catch (orderUpdateErr: any) {
       logger.error(
         { orderId, err: orderUpdateErr },
         "Stock was released successfully, but failed to update order status to CANCELLED in Order Service.",
       );
 
-      throw new Error(
-        "Stock released, but failed to synchronize status with Order Service",
+      // AppError
+      const statusCode = orderUpdateErr?.statusCode || 400;
+      const message =
+        orderUpdateErr?.message ||
+        "Stock released, but failed to synchronize status with Order Service";
+
+      throw new AppError(
+        message,
+        statusCode,
+        true,
+        orderUpdateErr?.details || orderUpdateErr,
+        "INTER_SERVICE_ERROR",
       );
     }
   }
