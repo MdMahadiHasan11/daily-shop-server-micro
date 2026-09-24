@@ -59,6 +59,8 @@ export class OrderService extends BaseService {
         items,
       );
 
+      return order
+
       if (order.paymentMethod === "ONLINE") {
         await this.eventBus.publish("ORDER_STOCK_HOLD", {
           orderId: order.id,

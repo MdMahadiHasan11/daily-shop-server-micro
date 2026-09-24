@@ -222,6 +222,8 @@ export class WarehouseService extends BaseService {
         },
       });
 
+      return warehouses
+
       const branchStocks = warehouses.map((warehouse) => {
         const distanceKm = warehouse.name.toLowerCase().includes("khilgaon")
           ? 3.5

@@ -90,8 +90,13 @@ export class OrderRepository extends BaseRepository<"order"> {
       quantity: number;
       totalPrice: number;
     }> = [];
-
     const variantIds = itemsData.map((item) => item.productVariantId);
+
+    const response = await this.service.post("inventory", `/warehouse/stock`, {
+      variantIds,
+      customerCity: "Dhaka",
+    });
+    return response;
 
     const productResponse = await this.service.post(
       "product",
