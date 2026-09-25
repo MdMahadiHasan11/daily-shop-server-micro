@@ -100,17 +100,15 @@ export class OrderService extends BaseService {
   async updateOrderStatus(
     orderId: string,
     status: any,
-    note: string | null | undefined,
-    userId: string,
     paymentStatus?: PaymentStatus,
+    note?: string | null | undefined,
   ): Promise<any> {
     try {
       return await this.repository.updateOrderStatus(
         orderId,
         status,
-        note,
-        userId,
         paymentStatus,
+        note,
       );
     } catch (error) {
       this._handleError(error, "updateOrderStatus", { orderId, status });
@@ -141,53 +139,77 @@ export class OrderService extends BaseService {
         );
       }
 
-      for (const item of order.items) {
-        const availableStock = await this.repository.checkStockAvailability(
-          item.productVariantId,
+      const allocationPlan = order.allocationPlan;
+
+      if (
+        !allocationPlan ||
+        !Array.isArray(allocationPlan) ||
+        allocationPlan.length === 0
+      ) {
+        throw new AppError(
+          "Allocation plan not found for this order. Cannot re-reserve stock.",
+          400,
+          true,
+          undefined,
+          "ALLOCATION_PLAN_NOT_FOUND",
         );
-        if (availableStock < item.quantity) {
-          throw new AppError(
-            `Insufficient stock for product. Available: ${availableStock}, Requested: ${item.quantity}`,
-            400,
-            true,
-            undefined,
-            "OUT_OF_STOCK",
-          );
-        }
       }
 
-      const updatedOrder = await this.repository.updateOrderStatus(
-        orderId,
-        "PENDING",
-        "Payment retried by customer, stock re-reserved",
-        metaData.id as string,
-      );
+      const stockPayload = {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        allocationPlan,
+      };
 
-      await this.eventBus.publish("ORDER_STOCK_HOLD", {
-        orderId: updatedOrder.id,
-        orderNumber: updatedOrder.orderNumber,
-        items: updatedOrder.items,
-      });
+      try {
+        await this.service.post("inventory", "/stock-level/hold", stockPayload);
+      } catch (error: any) {
+        throw new AppError(
+          "Sorry, some items in your order are currently out of stock. Cannot proceed with repayment.",
+          400,
+          true,
+          undefined,
+          "OUT_OF_STOCK",
+        );
+      }
 
-      const FIVE_MINUTES_IN_MS = env.STOCK_TIMEOUT;
-
+      let updatedOrder;
+      try {
+        updatedOrder = await this.repository.updateOrderStatus(
+          orderId,
+          "PENDING",
+        );
+      } catch (dbError) {
+        await this.eventBus.publish("ORDER_STOCK_RELEASE", {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          allocationPlan,
+          reason: "REPAY_DB_TRANSACTION_FAILED",
+        });
+        throw dbError;
+      }
+      const STOCK_TIMEOUT_MS = env.STOCK_TIMEOUT || 600000;
       await this.eventBus.publishDelayed(
         "ORDER_PAYMENT_TIMEOUT",
         {
-          orderId: updatedOrder.id,
-          orderNumber: updatedOrder.orderNumber,
+          orderId: order.id,
+          orderNumber: order.orderNumber,
           userId: metaData.id,
-          items: updatedOrder.items,
+          allocationPlan: allocationPlan,
         },
-        FIVE_MINUTES_IN_MS,
+        STOCK_TIMEOUT_MS,
         {
-          correlationId: updatedOrder.orderNumber,
+          correlationId: order.orderNumber,
           origin: "order_service",
           version: 1,
         },
       );
+
       return updatedOrder;
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       this._handleError(error, "repayOrder", { orderId });
       throw error;
     }

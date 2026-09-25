@@ -466,35 +466,32 @@ export class StockLevelService extends BaseService {
 
   async deductStockPermanently(data: {
     orderId: string;
-    items: Array<{
-      productVariantId: string;
-      quantity: number;
-      warehouseId?: string;
+    orderNumber?: string;
+    allocationPlan: Array<{
+      branchId: string;
+      variantId: string;
+      allocatedQty: number;
     }>;
   }) {
-    const { orderId, items } = data;
+    const { orderId, orderNumber, allocationPlan } = data;
 
     try {
       await this.db.$transaction(async (tx: any) => {
-        for (const item of items) {
-          const { productVariantId, quantity, warehouseId } = item;
+        for (const item of allocationPlan) {
+          const { branchId, variantId, allocatedQty } = item;
+          const warehouseId = branchId; // branchId is treated as warehouseId
 
-          let stockLevelQuery: any = {
-            productVariantId: productVariantId,
-            isDeleted: false,
-          };
-
-          if (warehouseId) {
-            stockLevelQuery.warehouseId = warehouseId;
-          }
-
-          const stockLevels = await tx.stockLevel.findMany({
-            where: stockLevelQuery,
+          const stockLevelRecord = await tx.stockLevel.findFirst({
+            where: {
+              productVariantId: variantId,
+              warehouseId: warehouseId,
+              isDeleted: false,
+            },
           });
 
-          if (!stockLevels || stockLevels.length === 0) {
+          if (!stockLevelRecord) {
             throw new AppError(
-              `Stock level record not found for variant ${productVariantId}`,
+              `Stock level record not found for variant ${variantId} in warehouse ${warehouseId}`,
               404,
               true,
               undefined,
@@ -502,61 +499,85 @@ export class StockLevelService extends BaseService {
             );
           }
 
-          for (const stockLevel of stockLevels) {
-            if (stockLevel.reservedQuantity < quantity) {
-              continue;
-            }
-
-            const batches = await tx.StockBatch.findMany({
-              where: {
-                productVariantId: productVariantId,
-                warehouseId: stockLevel.warehouseId,
-                isDeleted: false,
-              },
-            });
-
-            let remainingToDeduct = quantity;
-
-            for (const batch of batches) {
-              if (remainingToDeduct <= 0) break;
-              if (!batch.reservedQuantity || batch.reservedQuantity <= 0)
-                continue;
-
-              const deductFromBatch = Math.min(
-                batch.reservedQuantity,
-                remainingToDeduct,
-              );
-
-              await tx.StockBatch.update({
-                where: { id: batch.id },
-                data: {
-                  reservedQuantity: {
-                    decrement: deductFromBatch,
-                  },
-                  currentQuantity: {
-                    decrement: deductFromBatch,
-                  },
-                },
-              });
-
-              remainingToDeduct -= deductFromBatch;
-            }
-
-            const newReservedQty = Math.max(
-              0,
-              stockLevel.reservedQuantity - quantity,
+          if (stockLevelRecord.reservedQuantity < allocatedQty) {
+            throw new AppError(
+              `Reserved stock is less than allocated quantity for variant ${variantId} in warehouse ${warehouseId}`,
+              400,
+              true,
+              undefined,
+              "INSUFFICIENT_RESERVED_STOCK",
             );
-            const newTotalQty = Math.max(0, stockLevel.quantity - quantity);
+          }
 
-            await tx.stockLevel.update({
-              where: { id: stockLevel.id },
+          // Fetch active batches sorted by FEFO (expiryDate ascending)
+          const batches = await tx.stockBatch.findMany({
+            where: {
+              productVariantId: variantId,
+              warehouseId: warehouseId,
+              isDeleted: false,
+            },
+            orderBy: {
+              expiryDate: "asc",
+            },
+          });
+
+          let remainingToDeduct = allocatedQty;
+
+          for (const batch of batches) {
+            if (remainingToDeduct <= 0) break;
+            if (!batch.reservedQuantity || batch.reservedQuantity <= 0)
+              continue;
+
+            const deductFromBatch = Math.min(
+              batch.reservedQuantity,
+              remainingToDeduct,
+            );
+
+            // Permanently decrement both reservedQuantity and currentQuantity from the batch
+            await tx.stockBatch.update({
+              where: { id: batch.id },
               data: {
-                reservedQuantity: newReservedQty,
-                quantity: newTotalQty,
+                reservedQuantity: {
+                  decrement: deductFromBatch,
+                },
+                currentQuantity: {
+                  decrement: deductFromBatch,
+                },
               },
             });
-            break;
+
+            remainingToDeduct -= deductFromBatch;
           }
+
+          // Update stock level: decrease both reservedQuantity and main quantity permanently
+          const newReservedQty = Math.max(
+            0,
+            stockLevelRecord.reservedQuantity - allocatedQty,
+          );
+          const newTotalQty = Math.max(
+            0,
+            stockLevelRecord.quantity - allocatedQty,
+          );
+
+          await tx.stockLevel.update({
+            where: { id: stockLevelRecord.id },
+            data: {
+              reservedQuantity: newReservedQty,
+              quantity: newTotalQty,
+            },
+          });
+
+          // Optional: Record the permanent stock out transaction if needed
+          await tx.stockTransaction.create({
+            data: {
+              warehouseId: warehouseId,
+              productVariantId: variantId,
+              type: "STOCK_OUT",
+              referenceId: orderId,
+              note: `Stock permanently deducted for order: ${orderNumber || orderId}`,
+              quantity: allocatedQty,
+            },
+          });
         }
       });
     } catch (error) {

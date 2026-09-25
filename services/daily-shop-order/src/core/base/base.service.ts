@@ -5,12 +5,14 @@ import db from "../lib/prisma";
 import { eventBus } from "../services/event-bus-rabit.service";
 import { redisService } from "../services/redis.service";
 import { logger } from "../utils/logger.utils";
+import { microserviceClient } from "../services/axios.service";
 
 export abstract class BaseService {
   // ✅ Prisma client instance from your DatabaseService wrapper
   protected readonly db = db.prisma;
   protected readonly cache = redisService;
   protected readonly eventBus = eventBus;
+  protected service = microserviceClient;
 
   protected serviceName: string = this.constructor.name;
   private readonly startupTime = Date.now();

@@ -34,6 +34,7 @@ model Order {
   status        OrderStatus   @default(PENDING)
   paymentStatus PaymentStatus @default(PENDING)
   paymentMethod PaymentMethod @default(ONLINE)
+  allocationPlan  Json?
 
   // Financial Calculations
   subTotal       Float

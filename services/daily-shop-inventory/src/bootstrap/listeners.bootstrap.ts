@@ -3,30 +3,14 @@ import { StockLevelService } from "../api/modules/stock-level/stock-level.servic
 import { eventBus } from "../core/services/event-bus-rabit.service";
 import { expiredBatchCron } from "../core/services/expired-batch.cron";
 import { redisSubscriberService } from "../core/services/redis-subscriber.service";
-import { redisService } from "../core/services/redis.service";
 import { logger } from "../core/utils/logger.utils";
 
 import { EVENTS } from "./event.constants";
 
 export async function bootstrapListeners(): Promise<void> {
-  const cache = redisService;
-
-  // 1. Register OTP & Forgot Password Expiration Handlers (Other Redis keys if needed)
-  redisSubscriberService.onKeyExpired("otp", (fullKey, keyParts) => {
-    const identifier = keyParts;
-    logger.info(`redis key expired: ${fullKey}`);
-  });
-
-  redisSubscriberService.onKeyExpired("forgot", (fullKey, keyParts) => {
-    const email = keyParts[1];
-    logger.info(
-      `[Auth Listener] Password reset token/OTP expired for email: ${email}`,
-    );
-  });
-
   await redisSubscriberService.start();
 
-  // 2. Product Variant Sync Listener for Inventory Service
+  // 1. Product Variant Sync Listener for Inventory Service
   await eventBus.subscribe(
     EVENTS.AFTER_PRODUCT_CREATE_NEED_INVENTORY,
     async (event: any) => {
@@ -76,58 +60,35 @@ export async function bootstrapListeners(): Promise<void> {
     "inventory_service_product_group",
   );
 
-  // 3. New Order Stock Release Listener (Handles rollbacks when order creation fails in checkout)
+  // 2. Order Stock Release Listener (Compensation / Failure)
   await eventBus.subscribe(
     "ORDER_STOCK_RELEASE",
     async (event: any) => {
       try {
         const rawData = event?.payload?.payload || event?.payload || event;
-        const {
-          orderId,
-          orderNumber,
-          allocationPlan: eventAllocationPlan,
-          reason,
-        } = rawData;
-
-        if (!orderId) {
-          logger.error(
-            "Order ID is missing in ORDER_STOCK_RELEASE event payload!",
-          );
-          return;
-        }
-
-        const cacheKey = `order:compensation:${orderId}`;
-        const stockLevelService = new StockLevelService();
-
-        // Retrieve the exact stock payload from Redis cache first
-        let payloadToRelease = await cache.get<{ allocationPlan: any }>(
-          cacheKey,
-        );
-
-        const allocationPlan =
-          payloadToRelease?.allocationPlan || eventAllocationPlan;
+        const { orderId, orderNumber, allocationPlan, reason } = rawData;
 
         if (
+          !orderId ||
           !allocationPlan ||
           !Array.isArray(allocationPlan) ||
           allocationPlan.length === 0
         ) {
           logger.error(
             { orderId, reason },
-            "Allocation plan data is missing or invalid for stock release!",
+            "Order ID or allocationPlan data is missing/invalid in ORDER_STOCK_RELEASE event payload!",
           );
           return;
         }
 
-        // Execute service-level stock release logic
+        const stockLevelService = new StockLevelService();
+
+        // Execute service-level stock release logic using direct allocation plan
         await stockLevelService.releaseStockForOrder({
           orderId,
           orderNumber,
           allocationPlan,
         });
-
-        // Delete cache immediately
-        await cache.delete(cacheKey);
 
         logger.info(
           { orderId, orderNumber, reason },
@@ -144,7 +105,7 @@ export async function bootstrapListeners(): Promise<void> {
     "inventory_service_order_release_group",
   );
 
-  // 4. Order Payment Timeout Listener (Triggered automatically via Delayed Event after timeout)
+  // 3. Order Payment Timeout Listener (Delayed Event)
   await eventBus.subscribe(
     "ORDER_PAYMENT_TIMEOUT",
     async (event: any) => {
@@ -164,7 +125,6 @@ export async function bootstrapListeners(): Promise<void> {
           return;
         }
 
-        const cacheKey = `order:compensation:${orderId}`;
         const stockLevelService = new StockLevelService();
 
         // Release the reserved stock because the payment window expired
@@ -173,9 +133,6 @@ export async function bootstrapListeners(): Promise<void> {
           orderNumber,
           allocationPlan,
         });
-
-        // Clear compensation cache if it still exists
-        await cache.delete(cacheKey);
 
         logger.info(
           { orderId, orderNumber },
@@ -192,36 +149,38 @@ export async function bootstrapListeners(): Promise<void> {
     "inventory_service_order_timeout_group",
   );
 
-  // 5. Order Confirmed / Successful Payment Listener
+  // 4. Order Confirmed / Successful Payment Listener
   await eventBus.subscribe(
     "ORDER_CONFIRMED",
     async (event: any) => {
       try {
         const rawData = event?.payload?.payload || event?.payload || event;
-        const { orderId, orderNumber, items } = rawData;
+        const { orderId, orderNumber, allocationPlan } = rawData;
 
-        if (!orderId || !items || !Array.isArray(items) || items.length === 0) {
+        if (
+          !orderId ||
+          !allocationPlan ||
+          !Array.isArray(allocationPlan) ||
+          allocationPlan.length === 0
+        ) {
           logger.error(
-            "Order ID or items data is missing/invalid event payload!",
+            "Order ID or allocationPlan data is missing/invalid in ORDER_CONFIRMED event payload!",
           );
           return;
         }
 
-        const cacheKey = `order:compensation:${orderId}`;
         const stockLevelService = new StockLevelService();
 
-        // Clear the Redis compensation cache immediately since payment is successful
-        await cache.delete(cacheKey);
-
-        // Permanently deduct the reserved stock since payment is successful
+        // Permanently deduct the reserved stock using allocation plan
         await stockLevelService.deductStockPermanently({
-          orderId: orderId,
-          items: items,
+          orderId,
+          orderNumber,
+          allocationPlan,
         });
 
         logger.info(
           { orderId, orderNumber },
-          "Reserved stock successfully deducted permanently and compensation cache cleared due to successful payment 💳📦",
+          "Reserved stock successfully deducted permanently due to successful payment 💳📦",
         );
       } catch (error: any) {
         logger.error(

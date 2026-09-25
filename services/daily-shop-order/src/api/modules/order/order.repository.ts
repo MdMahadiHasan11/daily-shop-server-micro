@@ -80,12 +80,11 @@ export class OrderRepository extends BaseRepository<"order"> {
     });
   }
 
-  async updateOrderStatus(
+ async updateOrderStatus(
     orderId: string,
     status: any,
-    note: string | null | undefined,
-    changedBy: string,
     paymentStatus?: PaymentStatus,
+    note?: string | null | undefined,
   ) {
     // 1. Transaction block for database operations
     const { updatedOrder, previousStatus } = await this.transaction(
@@ -105,23 +104,31 @@ export class OrderRepository extends BaseRepository<"order"> {
           );
         }
 
-        if (order.status === status) {
+        // If status is the same, return early without unnecessary updates
+        if (order.status === status && (!paymentStatus || order.paymentStatus === paymentStatus)) {
           return { updatedOrder: order, previousStatus: order.status };
+        }
+
+        // Dynamically build the update data object to handle optional parameters safely
+        const updateData: any = {
+          status,
+          statusHistory: {
+            create: {
+              status,
+              note: note || `Status changed to ${status}`,
+              changedBy: order.userId,
+            },
+          },
+        };
+
+        // Include paymentStatus only if it is explicitly provided
+        if (paymentStatus !== undefined) {
+          updateData.paymentStatus = paymentStatus;
         }
 
         const updatedOrderResult = await tx.order.update({
           where: { id: orderId },
-          data: {
-            status,
-            ...(paymentStatus !== undefined && { paymentStatus }),
-            statusHistory: {
-              create: {
-                status,
-                note: note || `Status changed to ${status}`,
-                changedBy,
-              },
-            },
-          },
+          data: updateData,
           include: { items: true, statusHistory: true },
         });
 
@@ -132,15 +139,14 @@ export class OrderRepository extends BaseRepository<"order"> {
       },
     );
 
-    const payload = {
-      orderId: updatedOrder.id,
-      orderNumber: updatedOrder.orderNumber,
-      items: this.transformOrderItems(updatedOrder.items),
-    };
-
-    // 2. Trigger event ONLY when transitioning from PENDING to CONFIRMED
-    if (previousStatus === "PENDING" && status === "CONFIRMED") {
-      await this.eventBus.publish("ORDER_CONFIRMED", payload);
+    if (previousStatus !== "CONFIRMED" && status === "CONFIRMED") {
+      if (updatedOrder.allocationPlan) {
+        await this.eventBus.publish("ORDER_CONFIRMED", {
+          orderId: updatedOrder.id,
+          orderNumber: updatedOrder.orderNumber,
+          allocationPlan: updatedOrder.allocationPlan,
+        });
+      }
     }
 
     return updatedOrder;
@@ -202,31 +208,17 @@ export class OrderRepository extends BaseRepository<"order"> {
     const orderId = randomUUID();
     const orderNumber = Utils.order.generateOrderNumber();
 
-    // Prepare the exact stock payload needed for both holding and releasing stock
+    // Prepare the exact stock payload needed for holding stock
     const stockPayload = {
       orderId,
       orderNumber,
       allocationPlan,
     };
 
-    const cacheKey = `order:compensation:${orderId}`;
-    const ttl = 600; // 10 minutes safety TTL
-
-    // Step 3: Cache the stock payload temporarily in Redis for mid-flight check safety
-    await this.cache.set(cacheKey, stockPayload, { ttl });
-
-    // Step 4: Hold/Lock inventory stock FIRST
-    let holdStock;
+    // Step 3: Hold/Lock inventory stock FIRST
     try {
-      holdStock = await this.service.post(
-        "inventory",
-        "/stock-level/hold",
-        stockPayload,
-      );
+      await this.service.post("inventory", "/stock-level/hold", stockPayload);
     } catch (error) {
-      // If hold fails, clean up the cache immediately
-      await this.cache.delete(cacheKey);
-
       throw new AppError(
         "Stock is insufficient or unavailable for allocation",
         400,
@@ -236,7 +228,7 @@ export class OrderRepository extends BaseRepository<"order"> {
       );
     }
 
-    // Step 5: Format order items and perform mid-flight validations
+    // Step 4: Format order items and perform mid-flight validations
     const formattedOrderItems: Array<any> = [];
     for (const item of itemsData) {
       const variant = variants.find((v: any) => v.id === item.productVariantId);
@@ -285,7 +277,7 @@ export class OrderRepository extends BaseRepository<"order"> {
       ? "COD order placed successfully, awaiting admin confirmation"
       : "Online order placed successfully, awaiting payment";
 
-    // Step 6: Create the order inside the database transaction
+    // Step 5: Create the order inside the database transaction
     try {
       const createdOrderResult = await this.transaction(async (tx) => {
         const newOrder = await tx.order.create({
@@ -300,6 +292,7 @@ export class OrderRepository extends BaseRepository<"order"> {
             shippingFee,
             taxAmount,
             totalAmount,
+            allocationPlan: JSON.parse(JSON.stringify(allocationPlan)),
             shippingName: orderData.shippingName,
             shippingPhone: orderData.shippingPhone,
             shippingEmail: orderData.shippingEmail,
@@ -325,19 +318,14 @@ export class OrderRepository extends BaseRepository<"order"> {
             statusHistory: true,
           },
         });
-
-        // Clear the mid-flight Redis compensation cache on successful order commit
-        await this.cache.delete(cacheKey);
-
         return {
           order: newOrder,
           allocationPlan,
         };
       });
 
-      // Step 7: Publish a delayed event for payment timeout (e.g., 5 or 10 minutes)
-      // If the user doesn't pay within this window, this delayed event will trigger stock release automatically.
-      const STOCK_TIMEOUT_MS = env.STOCK_TIMEOUT || 600000; // Default to 10 minutes
+      // Step 6: Publish a delayed event for payment timeout (e.g., 10 minutes)
+      const STOCK_TIMEOUT_MS = env.STOCK_TIMEOUT || 600000;
       await this.eventBus.publishDelayed(
         "ORDER_PAYMENT_TIMEOUT",
         {

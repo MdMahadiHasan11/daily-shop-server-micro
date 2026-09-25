@@ -3,6 +3,7 @@ import axios from "axios";
 import { BaseRepository } from "../../../core/base/base.repository";
 import { env } from "../../../core/config/env.config";
 import { AppError } from "../../../core/errors/errors";
+import { logger } from "../../../core/utils/logger.utils";
 
 export class SSLRepository extends BaseRepository<"payment"> {
   constructor() {
@@ -15,37 +16,8 @@ export class SSLRepository extends BaseRepository<"payment"> {
       const response = await this.service.get("order", `/${orderId}`);
       return response.data;
     } catch (err) {
-      console.error("Failed to fetch order from Order Service:", err);
+      logger.error("Failed to fetch order from Order Service:");
       return null;
-    }
-  }
-
-  // Update order status in Order Microservice
-  async updateOrderInService(
-    orderId: string,
-    status: string,
-    transactionId: string,
-  ) {
-    try {
-      const orderServiceUrl = env.ORDER_SERVICE_URL;
-      await axios.patch(
-        `${orderServiceUrl}/orders/update-status`,
-        {
-          orderId,
-          status,
-          transactionId,
-        },
-        {
-          headers: {
-            "x-internal-secret": env.PAYMENT_INTERNAL_SECRET,
-          },
-        },
-      );
-    } catch (error: any) {
-      console.error(
-        `Failed to update order status in Order Service: ${error.message}`,
-      );
-      // TODO: Implement message queue (RabbitMQ) or event fallback if microservice call fails
     }
   }
 
@@ -131,6 +103,28 @@ export class SSLRepository extends BaseRepository<"payment"> {
 
       return payment;
     });
+
+    // 5. Publish payment success event directly to Event Bus
+    if (updatedPayment && updatedPayment.orderId) {
+      try {
+        await this.eventBus.publish("PAYMENT_CONFIRMED_FROM_PAYMENT_SERVICE", {
+          orderId: updatedPayment.orderId,
+          status: "CONFIRMED",
+          paymentStatus:"PAID",
+          note:"Confirm payment by SSL"
+        });
+
+        logger.info(
+          { orderId: updatedPayment.orderId },
+          "Payment confirmed event published successfully 🚀",
+        );
+      } catch (pubError: any) {
+        logger.error(
+          { error: pubError.message },
+          "Failed to publish payment confirmed event! ❌",
+        );
+      }
+    }
     return updatedPayment;
   }
 }

@@ -13,17 +13,17 @@ interface LoginInitiate {
 
 export async function bootstrapListeners(): Promise<void> {
   await eventBus.subscribe(
-    "PAYMENT_CONFIRMED_FOR_ORDER_SERVICE",
+    "PAYMENT_CONFIRMED_FROM_PAYMENT_SERVICE",
     async (event: any) => {
       try {
         const rawData = event?.payload?.payload || event?.payload || event;
-        const { orderId, userId, status, note, paymentStatus } = rawData;
+        const { orderId, status, note, paymentStatus } = rawData;
+
         const payload = {
           orderId,
-          userId,
           status,
-          note,
           paymentStatus,
+          note,
         };
         if (!orderId || !status) {
           logger.error("Order ID  is missing/invalid  event payload!");
@@ -32,17 +32,15 @@ export async function bootstrapListeners(): Promise<void> {
 
         const orderService = new OrderService();
 
-       
         await orderService.updateOrderStatus(
           orderId,
           status,
-          note,
-          userId as string,
           paymentStatus,
+          note,
         );
 
         logger.info(
-          { orderId, userId },
+          { orderId },
           "After Successful Payment Reserved stock successfully deducted permanently due to successful payment 💳📦",
         );
       } catch (error: any) {
