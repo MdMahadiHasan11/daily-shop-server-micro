@@ -150,6 +150,21 @@ export class ProductRepository extends BaseRepository<"product"> {
     return productResult;
   }
 
+  async getProductsByBulk(productIds: string[]) {
+    return await this.model.findMany({
+      where: {
+        id: { in: productIds },
+        isDeleted: false,
+      },
+      include: {
+        category: true,
+        brand: true,
+        variants: { where: { isDeleted: false } },
+        tags: { include: { tag: true } },
+      },
+    });
+  }
+
   async getVariantsByBulk(variantIds: string[]) {
     return await this.prisma.productVariant.findMany({
       where: {

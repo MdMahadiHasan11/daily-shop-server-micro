@@ -52,6 +52,15 @@ export class ProductService extends BaseService {
     }
   }
 
+  async getProductsByBulk(productIds: string[]): Promise<any[]> {
+    try {
+      return await this.repository.getProductsByBulk(productIds);
+    } catch (error) {
+      this._handleError(error, "getProductsByBulk", { productIds });
+      throw error;
+    }
+  }
+
   async getVariantsByBulk(variantIds: string[]): Promise<any[]> {
     try {
       return await this.repository.getVariantsByBulk(variantIds);

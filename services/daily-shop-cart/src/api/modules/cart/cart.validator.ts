@@ -33,6 +33,11 @@ export class CartValidators extends BaseValidator {
       productVariantId: z.string().min(1, "Product Variant ID is required"),
     }),
   });
+  static getCart = z.object({
+    params: z.object({
+      productVariantId: z.string().min(1, "Product Variant ID is required"),
+    }),
+  });
 }
 
 export type AddToCartInput = z.infer<typeof CartValidators.addToCart>;

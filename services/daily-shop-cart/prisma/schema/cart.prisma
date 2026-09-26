@@ -18,6 +18,10 @@ model CartItem {
 
   productVariantId String
 
+  campaignId    String?
+  discountType  String?
+  discountValue Float?
+
   quantity Int @default(1)
 
   isReserved    Boolean   @default(false)
@@ -27,6 +31,7 @@ model CartItem {
   updatedAt DateTime @updatedAt
 
   @@unique([cartId, productVariantId])
+  @@unique([cartId, productVariantId, campaignId])
   @@index([cartId])
   @@index([productVariantId])
   @@map("cart_items")

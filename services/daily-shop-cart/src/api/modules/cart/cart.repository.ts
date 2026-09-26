@@ -45,7 +45,27 @@ export class CartRepository extends BaseRepository<"cart"> {
     }
   }
 
-  async addToCart(userId: string, productVariantId: string, quantity: number) {
+  async getCampaignProductDetails(campaignId: string): Promise<any[]> {
+    try {
+      const response = await this.service.post("campaign", "/variants/bulk", {
+        campaignId,
+      });
+      return response.data;
+    } catch (err) {
+      console.error(
+        "Failed to fetch variant details from Product Service:",
+        err,
+      );
+      return [];
+    }
+  }
+
+  async addToCart(
+    userId: string,
+    productVariantId: string,
+    quantity: number,
+    campaignId?: string,
+  ) {
     return await this.transaction(async (tx) => {
       let cart = await tx.cart.findUnique({ where: { userId } });
 
@@ -53,17 +73,57 @@ export class CartRepository extends BaseRepository<"cart"> {
         cart = await tx.cart.create({ data: { userId } });
       }
 
-      const existingItem = await tx.cartItem.findUnique({
+      let finalCampaignId: string | null = null;
+      let discountType: string | null = null;
+      let discountValue: number | null = null;
+
+      // 2. Validate campaign and calculate discount on the backend if campaignId is provided
+      if (campaignId) {
+        const campaignProduct =
+          await this.getCampaignProductDetails(campaignId);
+
+        const now = new Date();
+        if (
+          campaignProduct &&
+          campaignProduct.campaign.isActive &&
+          !campaignProduct.campaign.isDeleted &&
+          now >= new Date(campaignProduct.campaign.startDate) &&
+          now <= new Date(campaignProduct.campaign.endDate)
+        ) {
+          finalCampaignId = campaignId;
+          discountType = campaignProduct.discountType;
+          discountValue = campaignProduct.discountValue;
+        } else {
+          throw new AppError(
+            "Campaign is invalid or expired",
+            400,
+            true,
+            undefined,
+            "INVALID_CAMPAIGN",
+          );
+        }
+      }
+
+      // 3. Check for existing cart item
+      // Note: Based on your @@unique([cartId, productVariantId]) constraint,
+      // if you want normal items and campaign items to coexist for the same variant,
+      // make sure to adjust your Prisma schema unique constraint to @@unique([cartId, productVariantId, campaignId]) if needed.
+      const existingItem = await tx.cartItem.findFirst({
         where: {
-          cartId_productVariantId: { cartId: cart.id, productVariantId },
+          cartId: cart.id,
+          productVariantId,
+          campaignId: finalCampaignId,
         },
       });
 
       const currentCartQuantity = existingItem ? existingItem.quantity : 0;
       const totalRequestedQuantity = currentCartQuantity + quantity;
 
-      const stockAvailable =
-        await this.checkStockAvailability(productVariantId);
+      // 4. Check stock availability (considering campaign stock limits if applicable)
+      const stockAvailable = await this.checkStockAvailability(
+        productVariantId,
+        finalCampaignId,
+      );
 
       if (stockAvailable < totalRequestedQuantity) {
         throw new AppError(
@@ -75,14 +135,26 @@ export class CartRepository extends BaseRepository<"cart"> {
         );
       }
 
+      // 5. Update or create cart item with backend-validated campaign data
       if (existingItem) {
         return await tx.cartItem.update({
           where: { id: existingItem.id },
-          data: { quantity: totalRequestedQuantity },
+          data: {
+            quantity: totalRequestedQuantity,
+            discountType,
+            discountValue,
+          },
         });
       } else {
         return await tx.cartItem.create({
-          data: { cartId: cart.id, productVariantId, quantity },
+          data: {
+            cartId: cart.id,
+            productVariantId,
+            quantity,
+            campaignId: finalCampaignId,
+            discountType,
+            discountValue,
+          },
         });
       }
     });

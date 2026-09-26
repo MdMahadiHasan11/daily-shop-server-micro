@@ -31,7 +31,7 @@ export class ProductVariantRoutes extends BaseRoutes<ProductVariantController> {
 
     this.router.post(
       "/bulk",
-      this.validateService.allow(["gateway", "cart", "order"]),
+      this.validateService.allow(["gateway", "cart", "order", "campaign"]),
       this.validateRequest(ProductVariantValidators.getBulkVariants),
       this.controller.getVariantsByBulk,
     );

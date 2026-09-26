@@ -34,6 +34,12 @@ export class ProductController extends BaseController {
     });
   });
 
+  getProductsByBulk = this.asyncHandler(async (req: Request, res: Response) => {
+    const { productIds } = req.validatedBody.body;
+    const result = await this.service.getProductsByBulk(productIds);
+    return this.successResponse(res, result, 200);
+  });
+
   getVariantsByBulk = this.asyncHandler(async (req: Request, res: Response) => {
     const { variantIds } = req.validatedBody.body;
     const result = await this.service.getVariantsByBulk(variantIds);

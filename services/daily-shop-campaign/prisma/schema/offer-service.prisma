@@ -1,0 +1,107 @@
+model CampaignTypeModel {
+    id          String  @id @default(uuid())
+    name        String  @unique
+    slug        String  @unique
+    description String?
+    isActive    Boolean @default(true)
+    isDeleted   Boolean @default(false)
+
+    campaigns Campaign[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@map("campaign_types")
+}
+
+enum DiscountType {
+    PERCENTAGE
+    FIXED_AMOUNT
+}
+
+// ==========================================
+// 1. CAMPAIGN MODEL
+// ==========================================
+model Campaign {
+    id          String            @id @default(uuid())
+    title       String
+    slug        String            @unique
+    description String?           @db.Text
+    typeId      String
+    type        CampaignTypeModel @relation(fields: [typeId], references: [id])
+
+    // Frontend Visuals & Banners
+    bannerUrl  String?
+    badgeText  String?
+    badgeColor String?
+
+    // Timing
+    startDate DateTime
+    endDate   DateTime
+
+    isActive  Boolean @default(true)
+    isDeleted Boolean @default(false)
+
+    products CampaignProduct[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([startDate, endDate, isActive])
+    @@map("campaigns")
+}
+
+// ==========================================
+// 2. CAMPAIGN PRODUCTS (Without static campaignPrice)
+// ==========================================
+model CampaignProduct {
+    id         String   @id @default(uuid())
+    campaignId String
+    campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+    productId        String
+    productVariantId String?
+
+    discountType  DiscountType
+    discountValue Float
+
+    stockLimit Int?
+    soldCount  Int  @default(0)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([campaignId, productId, productVariantId])
+    @@index([campaignId])
+    @@index([productId])
+    @@index([productVariantId])
+    @@map("campaign_products")
+}
+
+// ==========================================
+// 3. COUPON MODEL
+// ==========================================
+model Coupon {
+    id             String       @id @default(uuid())
+    code           String       @unique
+    description    String?
+    discountType   DiscountType
+    discountValue  Float
+    minOrderAmount Float?
+    maxDiscount    Float?
+
+    usageLimit   Int?
+    usedCount    Int  @default(0)
+    perUserLimit Int?
+
+    startDate DateTime
+    endDate   DateTime
+    isActive  Boolean  @default(true)
+    isDeleted Boolean  @default(false)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([code, isActive])
+    @@map("coupons")
+}

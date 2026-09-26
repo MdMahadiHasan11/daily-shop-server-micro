@@ -63,6 +63,16 @@ export class ProductValidators extends BaseValidator {
         .min(1, "At least one variant ID is required"),
     }),
   });
+  static getBulkProducts = z.object({
+    body: z.object({
+      productIds: z
+        .array(z.string().min(1))
+        .min(1, "At least one product ID is required"),
+    }),
+  });
 }
 
 export type ProductListQuery = z.infer<typeof ProductValidators.listProducts>;
+export type ProductBulkQuery = z.infer<
+  typeof ProductValidators.getBulkProducts
+>;
